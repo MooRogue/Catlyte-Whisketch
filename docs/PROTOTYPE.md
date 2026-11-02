@@ -15,9 +15,11 @@ A stable `whisketch://localhost` resource handler serves bundled assets. Direct 
 - Release device and Mac Catalyst compilation passed. Mac app ad-hoc signed and launched locally; window capture was unavailable, so no Mac visual validation is claimed.
 - Nextcloud unauthenticated status endpoint responded with server 35.0.2. No authenticated account or installed Whiteboard capability inspection was possible yet. Transport tests use controlled responses, not production writes.
 
-## Signing blocker
+## Signing status
 
-Apple's API returned HTTP 403 `FORBIDDEN_ERROR.PLA_NOT_ACCEPTED`: the account holder must accept the updated Program License Agreement before an app identifier/profile can be provisioned. No new device slots or signing certificate were created. The iOS app is compiled but not yet signed for installation or published as an OTA IPA. Prepared provisioning script and build products remain outside Git for resumption.
+After the account holder accepted Apple's updated Program License Agreement, provisioning succeeded. Whisketch is signed with the existing distribution certificate and the same four already registered devices, including Duo. Strict/deep signature checks, embedded entitlements, ZIP integrity and trusted HTTPS delivery were verified. No device slots were added.
+
+The single install card is published at https://ipas.genkizone.com/index.html#whisketch and appears in Recent builds. Physical Duo installation/testing remains pending. This does not change the prototype's Nextcloud copy-exchange limitations.
 
 ## Remaining compatibility gate
 

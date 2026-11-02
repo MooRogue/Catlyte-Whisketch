@@ -44,7 +44,7 @@ struct CloudAccount: Codable {
 enum CloudError: LocalizedError {
   case invalidServer, invalidResponse, invalidFolder
   case http(Int)
-  case unsafePath
+  case unsafePath, missingETag, conflict
   var errorDescription: String? {
     switch self {
     case .invalidServer:
@@ -55,7 +55,12 @@ enum CloudError: LocalizedError {
     case .invalidResponse: return "Unexpected response or saved-file verification failed."
     case .http(let code):
       return "Nextcloud returned HTTP \(code). Check your account, app password and permissions."
-    case .unsafePath: return "Nextcloud returned a file outside your Whisketch folder."
+    case .missingETag:
+      return
+        "Nextcloud did not provide a strong revision tag. The local note was kept without overwriting the server."
+    case .conflict:
+      return "This file changed on Nextcloud. Both versions were kept; choose which version to use."
+    case .unsafePath: return "Nextcloud returned a file outside your selected folder."
     }
   }
 }
@@ -135,8 +140,14 @@ final class NextcloudClient {
   private func validateFile(_ u: URL) throws {
     let f = try account.folder()
     let prefix = f.standardized.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    guard u.scheme == f.scheme, u.host == f.host, u.port == f.port,
-      u.standardized.path.hasPrefix("/" + prefix + "/")
+    let name = u.lastPathComponent
+    guard !name.contains("/"), !name.contains("\\"),
+      name.range(of: "%2[eEfF]|%5[cC]", options: .regularExpression) == nil, u.scheme == f.scheme,
+      u.host == f.host, u.port == f.port,
+      u.user == nil, u.password == nil, u.query == nil, u.fragment == nil,
+      u.deletingLastPathComponent().standardized.path.trimmingCharacters(
+        in: CharacterSet(charactersIn: "/")) == prefix,
+      ["whiteboard", "excalidraw"].contains(u.pathExtension.lowercased())
     else { throw CloudError.unsafePath }
   }
   func boards() async throws -> [CloudBoard] {
@@ -172,28 +183,90 @@ final class NextcloudClient {
     else { throw CloudError.invalidResponse }
     return s
   }
-  func publishCopy(name: String, json: String) async throws -> URL {
-    let d = Data(json.utf8)
-    guard let o = try JSONSerialization.jsonObject(with: d) as? [String: Any],
-      o["elements"] is [Any]
+  func fileURL(name: String) throws -> URL {
+    var safe = name.components(
+      separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
+    ).joined(separator: "-").trimmingCharacters(in: .whitespacesAndNewlines)
+    if safe.isEmpty { safe = "Untitled" }
+    safe = String(safe.prefix(100))
+    return try account.folder().appendingPathComponent(safe + ".whiteboard")
+  }
+  private func revision(_ r: HTTPURLResponse) throws -> String {
+    guard let tag = r.value(forHTTPHeaderField: "ETag"), tag.hasPrefix("\""),
+      tag.hasSuffix("\""), !tag.contains("\r"), !tag.contains("\n")
+    else {
+      throw CloudError.missingETag
+    }
+    return tag
+  }
+  private func boardData(_ data: Data) throws -> String {
+    guard data.count < 40_000_000, let json = String(data: data, encoding: .utf8),
+      let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+      object["elements"] is [Any]
     else { throw CloudError.invalidResponse }
-    let f = try account.folder()
+    return json
+  }
+  func fetch(_ url: URL) async throws -> CloudDocument? {
+    try validateFile(url)
+    let (data, response) = try await request(url, method: "GET")
+    if response.statusCode == 404 { return nil }
+    guard response.statusCode == 200 else { throw CloudError.http(response.statusCode) }
+    return CloudDocument(
+      url: url.absoluteString, json: try boardData(data), etag: try revision(response))
+  }
+  private func ensureFolder() async throws {
     var parent = try account.filesRoot()
     for component in try account.folderComponents() {
       parent = parent.appendingPathComponent(component, isDirectory: true)
-      let (_, mk) = try await request(parent, method: "MKCOL")
-      guard [201, 405].contains(mk.statusCode) else { throw CloudError.http(mk.statusCode) }
+      let (_, response) = try await request(parent, method: "MKCOL")
+      guard [201, 405].contains(response.statusCode) else {
+        throw CloudError.http(response.statusCode)
+      }
     }
-    let safe = name.components(
-      separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
-    ).joined(separator: "-").prefix(80)
-    let u = f.appendingPathComponent("\(safe)-\(UUID().uuidString.prefix(8)).whiteboard")
-    let (_, res) = try await request(
-      u, method: "PUT", body: d,
-      headers: ["Content-Type": "application/json", "If-None-Match": "*"])
-    guard res.statusCode == 201 else { throw CloudError.http(res.statusCode) }
-    let (check, verify) = try await request(u, method: "GET")
-    guard verify.statusCode == 200, check == d else { throw CloudError.invalidResponse }
-    return u
   }
+  func save(_ url: URL, json: String, etag: String?) async throws -> CloudDocument {
+    try validateFile(url)
+    let data = Data(json.utf8)
+    _ = try boardData(data)
+    if let etag = etag {
+      guard etag.hasPrefix("\""), etag.hasSuffix("\""), !etag.contains("\r"), !etag.contains("\n")
+      else { throw CloudError.missingETag }
+    }
+    try await ensureFolder()
+    let headers = [
+      "Content-Type": "application/json", etag == nil ? "If-None-Match" : "If-Match": etag ?? "*",
+    ]
+    let (_, response) = try await request(url, method: "PUT", body: data, headers: headers)
+    if [409, 412].contains(response.statusCode) { throw CloudError.conflict }
+    guard (etag == nil ? [201] : [200, 204]).contains(response.statusCode) else {
+      throw CloudError.http(response.statusCode)
+    }
+    guard let verified = try await fetch(url), Data(verified.json.utf8) == data else {
+      throw CloudError.invalidResponse
+    }
+    return verified
+  }
+  func move(_ from: URL, to: URL, etag: String) async throws -> CloudDocument {
+    try validateFile(from)
+    try validateFile(to)
+    guard etag.hasPrefix("\""), etag.hasSuffix("\""), !etag.contains("\r"), !etag.contains("\n")
+    else { throw CloudError.missingETag }
+    let (_, response) = try await request(
+      from, method: "MOVE",
+      headers: ["Destination": to.absoluteString, "Overwrite": "F", "If-Match": etag])
+    if [409, 412].contains(response.statusCode) { throw CloudError.conflict }
+    guard response.statusCode == 201 else { throw CloudError.http(response.statusCode) }
+    guard let moved = try await fetch(to) else { throw CloudError.invalidResponse }
+    return moved
+  }
+  func publishCopy(name: String, json: String) async throws -> URL {
+    let url = try fileURL(name: name)
+    _ = try await save(url, json: json, etag: nil)
+    return url
+  }
+}
+struct CloudDocument: Codable {
+  let url: String
+  let json: String
+  let etag: String
 }

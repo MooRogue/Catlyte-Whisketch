@@ -11,24 +11,20 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
   @Published var exportURL: URL?
   @Published var error: String?
   @Published var recognition: RecognizedText?
-  var pendingPublish: (String, String)?
   func userContentController(
     _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
   ) {
-    guard let obj = message.body as? [String: Any], let type = obj["type"] as? String else {
+    guard message.frameInfo.isMainFrame, let obj = message.body as? [String: Any],
+      let type = obj["type"] as? String
+    else {
       return
     }
     switch type {
     case "error": error = obj["message"] as? String
-    case "connect":
-      pendingPublish = nil
-      showCloud = true
+    case "ready": sendCloudConfiguration()
+    case "cloudRequest": cloudRequest(obj)
+    case "connect": showCloud = true
     case "ocr": showImport = true
-    case "publish":
-      if let name = obj["name"] as? String, let json = obj["json"] as? String {
-        pendingPublish = (name, json)
-        showCloud = true
-      }
     case "recognizeBoard":
       guard let text = obj["data"] as? String, let comma = text.firstIndex(of: ","),
         let data = Data(base64Encoded: String(text[text.index(after: comma)...]))
@@ -83,6 +79,76 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
         exportURL = url
       } catch { self.error = error.localizedDescription }
     default: break
+    }
+  }
+  func savedCloudAccount() -> CloudAccount? {
+    guard UserDefaults.standard.object(forKey: "cloudAutoSync") as? Bool ?? true,
+      let server = UserDefaults.standard.string(forKey: "cloudServer"),
+      let user = UserDefaults.standard.string(forKey: "cloudUser"), !user.isEmpty
+    else { return nil }
+    let account = CloudAccount(
+      server: server, username: user,
+      folderPath: UserDefaults.standard.string(forKey: "cloudFolder") ?? "Whisketch")
+    return PasswordStore.read(account).isEmpty ? nil : account
+  }
+  func sendCloudConfiguration() {
+    guard let account = savedCloudAccount(), let folder = try? account.folder() else {
+      call("configureCloud", ["null"])
+      return
+    }
+    let object = ["scope": folder.absoluteString, "folder": account.folderPath]
+    if let data = try? JSONSerialization.data(withJSONObject: object),
+      let json = String(data: data, encoding: .utf8)
+    {
+      call("configureCloud", [json])
+    }
+  }
+  func cloudRequest(_ object: [String: Any]) {
+    guard let id = object["requestID"] as? String else { return }
+    Task { @MainActor in
+      var response: [String: Any] = ["id": id]
+      do {
+        guard let account = savedCloudAccount(), let scope = object["scope"] as? String,
+          scope == (try account.folder().absoluteString)
+        else { throw CloudError.invalidServer }
+        let client = NextcloudClient(account: account, password: PasswordStore.read(account))
+        let operation = object["operation"] as? String
+        if operation == "target", let name = object["name"] as? String {
+          response["result"] = ["url": try client.fileURL(name: name).absoluteString]
+        } else {
+          guard let text = object["url"] as? String, let url = URL(string: text) else {
+            throw CloudError.unsafePath
+          }
+          var document: CloudDocument?
+          switch operation {
+          case "read": document = try await client.fetch(url)
+          case "write":
+            guard let json = object["json"] as? String else { throw CloudError.invalidResponse }
+            document = try await client.save(url, json: json, etag: object["etag"] as? String)
+          case "move":
+            guard let destination = object["destination"] as? String,
+              let to = URL(string: destination),
+              let etag = object["etag"] as? String
+            else { throw CloudError.invalidResponse }
+            document = try await client.move(url, to: to, etag: etag)
+          default: throw CloudError.invalidResponse
+          }
+          if let document = document {
+            response["result"] = try JSONSerialization.jsonObject(
+              with: JSONEncoder().encode(document))
+          } else {
+            response["result"] = NSNull()
+          }
+        }
+      } catch {
+        response["error"] = error.localizedDescription
+        if case CloudError.conflict = error { response["code"] = "conflict" }
+      }
+      if let data = try? JSONSerialization.data(withJSONObject: response),
+        let json = String(data: data, encoding: .utf8)
+      {
+        call("cloudResponse", [json])
+      }
     }
   }
   func webView(
@@ -196,6 +262,9 @@ struct CloudSheet: View {
   @State var status =
     "Connect with a Nextcloud app password, then select where your whiteboard files live."
   @State var busy = false
+  @State var autoSync =
+    UserDefaults.standard.object(forKey: "cloudAutoSync") as? Bool
+    ?? !(UserDefaults.standard.string(forKey: "cloudUser") ?? "").isEmpty
   var account: CloudAccount {
     CloudAccount(
       server: server.trimmingCharacters(in: .whitespacesAndNewlines), username: user,
@@ -224,50 +293,53 @@ struct CloudSheet: View {
           TextField("Folder in Files", text: $folder).textInputAutocapitalization(.never)
             .autocorrectionDisabled()
           Text(
-            "Files → \(folder.isEmpty ? "All files" : folder). Whiteboard files can live in any folder. New copies are created here only when you publish."
+            "Files → \(folder.isEmpty ? "All files" : folder). Whiteboard files can live in any folder. Connected notes sync when opened and after edits."
           ).font(.footnote)
-          Button("Connect and list boards") {
+          Button("Connect and enable automatic sync") {
+            let connectingPassword = password
             work { client in
               boards = try await client.boards()
-              try PasswordStore.save(password, for: account)
-              UserDefaults.standard.set(account.server, forKey: "cloudServer")
-              UserDefaults.standard.set(user, forKey: "cloudUser")
-              UserDefaults.standard.set(folder, forKey: "cloudFolder")
+              try PasswordStore.save(connectingPassword, for: client.account)
+              UserDefaults.standard.set(client.account.server, forKey: "cloudServer")
+              UserDefaults.standard.set(client.account.username, forKey: "cloudUser")
+              UserDefaults.standard.set(client.account.folderPath, forKey: "cloudFolder")
+              UserDefaults.standard.set(true, forKey: "cloudAutoSync")
+              autoSync = true
+              bridge.sendCloudConfiguration()
               status =
                 boards.isEmpty
-                ? "Connected. No editable boards in the selected folder yet."
-                : "Connected. Select a board to import a local copy."
+                ? "Automatic sync enabled. Open a notebook to save it here."
+                : "Automatic sync enabled. Select a board to open and keep synced."
             }
           }.disabled(busy || user.isEmpty || password.isEmpty)
-        }
+        }.disabled(busy)
         Section {
           Text(status).font(.callout)
           if busy { ProgressView() }
         }
-        if bridge.pendingPublish != nil {
-          Section("Publish a new copy") {
-            Text(
-              "A uniquely named .whiteboard file will be created and verified. Your local notebook remains independent; existing boards are never overwritten."
-            ).font(.callout)
-            Button("Publish this notebook") {
-              work { client in
-                guard let (name, json) = bridge.pendingPublish else { return }
-                let url = try await client.publishCopy(name: name, json: json)
-                bridge.pendingPublish = nil
-                status = "Verified new copy: \(url.lastPathComponent)"
-                bridge.call(
-                  "setNotice", ["Published a verified copy to Nextcloud. Live sync is not enabled."]
-                )
-              }
-            }.disabled(busy || user.isEmpty || password.isEmpty)
+        if autoSync {
+          Button("Pause automatic sync") {
+            UserDefaults.standard.set(false, forKey: "cloudAutoSync")
+            autoSync = false
+            bridge.sendCloudConfiguration()
+            status = "Automatic sync paused. Notes remain saved on this device."
           }
         }
-        Section("Import a copy") {
+        Section("Open a synced board") {
           ForEach(boards) { board in
             Button(board.name) {
               work { client in
-                let json = try await client.download(board)
-                bridge.call("importDocument", [json, board.name])
+                guard let document = try await client.fetch(board.url) else {
+                  throw CloudError.http(404)
+                }
+                // A successfully connected account is persisted before opening boards.
+                bridge.sendCloudConfiguration()
+                bridge.call(
+                  "openCloudDocument",
+                  [
+                    document.json, board.name, document.url, document.etag,
+                    try client.account.folder().absoluteString,
+                  ])
                 dismiss()
               }
             }.disabled(busy)
@@ -275,7 +347,7 @@ struct CloudSheet: View {
         }
         Section {
           Text(
-            "Live collaboration, automatic two-way sync and iCloud are not included in this first prototype."
+            "Notes refresh on opening and save automatically after edits. Offline changes stay local until a retry succeeds. Conflicts require choosing a version. This is file sync, not simultaneous live collaboration. iCloud is not included."
           ).font(.footnote)
         }
       }.navigationTitle("Nextcloud").toolbar {
@@ -289,6 +361,7 @@ struct CloudSheet: View {
           password = PasswordStore.read(account)
           boards = []
         }
+        .onChange(of: folder) { _, _ in boards = [] }
     }
   }
 }
@@ -301,9 +374,16 @@ struct ShareSheet: UIViewControllerRepresentable {
 }
 @main struct WhisketchApp: App {
   @StateObject var bridge = Bridge()
+  @Environment(\.scenePhase) private var scenePhase
   var body: some Scene {
     WindowGroup {
       Editor(bridge: bridge)
+        .onChange(of: scenePhase) { _, phase in
+          if phase == .active {
+            bridge.sendCloudConfiguration()
+            bridge.call("cloudForeground", [])
+          }
+        }
         .sheet(item: $bridge.recognition) { RecognitionSheet(bridge: bridge, text: $0.text) }
         .sheet(isPresented: $bridge.showCloud) { CloudSheet(bridge: bridge) }
         .sheet(

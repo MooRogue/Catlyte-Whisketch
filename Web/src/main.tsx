@@ -10,6 +10,7 @@ import "@excalidraw/excalidraw/index.css";
 import { get, set } from "idb-keyval";
 import { parseBoard, parseBackup, snapshot, safeName } from "./document.mjs";
 import "./style.css";
+import { CloudSync, contentKey } from "./cloud-sync.mjs";
 import { templates, makeTemplate, starterLibrary } from "./templates";
 
 declare global {
@@ -34,6 +35,7 @@ type Notebook = {
   deletedAt?: number;
   tags?: string[];
   cover?: string;
+  cloud?: any;
   checkpoints?: { id: string; at: number; title: string; scene: any }[];
 };
 const native = (m: unknown) =>
@@ -49,6 +51,9 @@ function App() {
   const [books, setBooks] = useState<Notebook[]>([]),
     [active, setActive] = useState(""),
     [loaded, setLoaded] = useState(false),
+    [cloudStates, setCloudStates] = useState<Record<string, any>>({}),
+    [cloudEnabled, setCloudEnabled] = useState(false),
+    [renderVersion, setRenderVersion] = useState(0),
     [menu, setMenu] = useState(false),
     [query, setQuery] = useState(""),
     [trash, setTrash] = useState(false),
@@ -63,8 +68,72 @@ function App() {
     queue = useRef<Promise<any>>(Promise.resolve()),
     latest = useRef<any>(null),
     nativeSeen = useRef(false),
-    libraries = useRef<any[]>([]);
-  const persist = useCallback((next: Notebook[]) => {
+    libraries = useRef<any[]>([]),
+    cloudEngine = useRef<any>(null),
+    cloudConfiguration = useRef<any>(null),
+    syncTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map()),
+    cloudRequests = useRef<Map<string, any>>(new Map()),
+    applyingRemote = useRef<string | null>(null),
+    localSaveHealthy = useRef(true);
+  function scheduleSync(id: string, delay = 1200) {
+    if (!cloudConfiguration.current) return;
+    clearTimeout(syncTimers.current.get(id));
+    syncTimers.current.set(
+      id,
+      setTimeout(() => {
+        syncTimers.current.delete(id);
+        void cloudEngine.current?.sync(id);
+      }, delay),
+    );
+  }
+  function syncOpenedAndLinked() {
+    for (const b of all.current)
+      if (!b.deletedAt && (b.id === current.current || b.cloud))
+        scheduleSync(b.id, 0);
+  }
+  async function cloudRequest(operation: string, args: any): Promise<any> {
+    await queue.current;
+    return new Promise((resolve, reject) => {
+      if (!localSaveHealthy.current) {
+        reject(
+          new Error(
+            "Save on this device failed. Export your note before syncing.",
+          ),
+        );
+        return;
+      }
+      const requestID = newID();
+      const timer = setTimeout(() => {
+        cloudRequests.current.delete(requestID);
+        reject(
+          new Error(
+            "Nextcloud is unavailable. Changes are saved locally and will retry.",
+          ),
+        );
+      }, 90000);
+      cloudRequests.current.set(requestID, { resolve, reject, timer });
+      native({ type: "cloudRequest", requestID, operation, ...args });
+    });
+  }
+  const persist = useCallback((next: Notebook[], sync = true) => {
+    const changed = sync
+      ? next
+          .filter((b) => {
+            const old = all.current.find((x) => x.id === b.id);
+            return (
+              !b.deletedAt &&
+              (!old || old.title !== b.title || old.scene !== b.scene)
+            );
+          })
+          .map((b) => b.id)
+      : [];
+    if (cloudConfiguration.current && changed.length)
+      setCloudStates((states) => {
+        const updated = { ...states };
+        for (const id of changed)
+          updated[id] = { state: "queued", message: "Waiting to sync…" };
+        return updated;
+      });
     all.current = next;
     setBooks(next);
     setNotice("Saving on this device…");
@@ -72,9 +141,90 @@ function App() {
     queue.current = queue.current
       .catch(() => {})
       .then(() => set("whisketch-library-v1", payload))
-      .then(() => setNotice("Saved on this device"))
-      .catch(() => setNotice("Save failed. Export your board to keep a copy."));
+      .then(() => {
+        localSaveHealthy.current = true;
+        setNotice("Saved on this device");
+        changed.forEach((id) => scheduleSync(id));
+      })
+      .catch(() => {
+        localSaveHealthy.current = false;
+        setNotice("Save failed. Export your board to keep a copy.");
+      });
     return queue.current;
+  }, []);
+  if (!cloudEngine.current)
+    cloudEngine.current = new CloudSync({
+      getBook: (id: string) => all.current.find((b) => b.id === id),
+      commit: (id: string, patch: Partial<Notebook>, refresh = false) => {
+        if (refresh && current.current === id) {
+          applyingRemote.current = id;
+          latest.current = null;
+          setRenderVersion((v) => v + 1);
+        }
+        return persist(
+          all.current.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+          false,
+        ).then(() => {
+          if (!localSaveHealthy.current)
+            throw new Error(
+              "Local save failed. Export your note to keep a copy.",
+            );
+        });
+      },
+      remote: cloudRequest,
+      notify: (id: string, state: any) =>
+        setCloudStates((states) => ({ ...states, [id]: state })),
+    });
+  function configureCloud(json: string) {
+    const configuration = JSON.parse(json);
+    const scope = configuration?.scope ?? null;
+    cloudConfiguration.current = configuration;
+    cloudEngine.current.configure(scope);
+    setCloudEnabled(!!scope);
+    if (!scope) setCloudStates({});
+    else syncOpenedAndLinked();
+  }
+  function openCloudDocument(
+    json: string,
+    name: string,
+    url: string,
+    etag: string,
+    scope: string,
+  ) {
+    const existing = all.current.find(
+      (b) => b.cloud?.url === url && b.cloud?.scope === scope && !b.deletedAt,
+    );
+    if (existing) {
+      select(existing.id);
+      scheduleSync(existing.id, 0);
+      return;
+    }
+    const scene = parseBoard(json);
+    add(name.replace(/\.(whiteboard|excalidraw)$/i, ""), scene, {
+      cloud: {
+        scope,
+        url,
+        etag,
+        base: contentKey(scene),
+        syncedAt: Date.now(),
+      },
+    });
+  }
+  useEffect(() => {
+    if (loaded) scheduleSync(active, 0);
+  }, [loaded, active]);
+  useEffect(() => {
+    const foreground = () => {
+      if (!document.hidden) syncOpenedAndLinked();
+    };
+    window.addEventListener("online", foreground);
+    document.addEventListener("visibilitychange", foreground);
+    const timer = setInterval(foreground, 15000);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", foreground);
+      document.removeEventListener("visibilitychange", foreground);
+    };
   }, []);
   useEffect(() => {
     Promise.all([
@@ -116,7 +266,7 @@ function App() {
   }, []);
   function updateScene(elements: any, appState: any, files: any) {
     const b = all.current.find((b) => b.id === active);
-    if (!b) return;
+    if (!b || applyingRemote.current === b.id) return;
     const scene = snapshot(b.scene, elements, appState, files);
     if (JSON.stringify(scene) === JSON.stringify(b.scene)) return;
     latest.current = scene;
@@ -147,6 +297,11 @@ function App() {
   function exportBoard(publish = false) {
     const b = all.current.find((x) => x.id === current.current);
     if (!b) return;
+    if (publish) {
+      if (cloudConfiguration.current) scheduleSync(b.id, 0);
+      else native({ type: "connect" });
+      return;
+    }
     const data = JSON.stringify(b.scene, null, 2);
     if (window.webkit?.messageHandlers?.whisketch) {
       native({
@@ -198,6 +353,7 @@ function App() {
           ...b,
           id: newID(),
           title: b.title + " restored",
+          cloud: undefined,
         }));
         void persist([...restored, ...all.current]);
         if (restored[0]) select(restored[0].id);
@@ -233,6 +389,21 @@ function App() {
     window.Whisketch = {
       isReady: () => !!api.current,
       libraryCount: () => libraries.current.length,
+      configureCloud,
+      cloudForeground: syncOpenedAndLinked,
+      openCloudDocument,
+      cloudResponse: (json: string) => {
+        const response = JSON.parse(json);
+        const pending = cloudRequests.current.get(response.id);
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        cloudRequests.current.delete(response.id);
+        if (response.error)
+          pending.reject(
+            Object.assign(new Error(response.error), { code: response.code }),
+          );
+        else pending.resolve(response.result);
+      },
       importDocument: importBoard,
       insertCapture: (dataURL: string, text: string) => {
         const image = new Image();
@@ -280,7 +451,7 @@ function App() {
       insertText: (text: string) => {
         if (!api.current) return;
         const elements = convertToExcalidrawElements([
-          { type: "text", x: 80, y: 80, text, fontSize: 22 },
+          { type: "text", x: 80, y: 80, text, fontSize: 22, fontFamily: 2 },
         ]);
         api.current.updateScene({
           elements: [
@@ -343,6 +514,14 @@ function App() {
     add("Welcome to Whisketch", { ...blank(), elements: els });
   }
   const book = books.find((x) => x.id === active);
+  const cloudState = cloudStates[active];
+  async function resolveCloud(choice: string) {
+    try {
+      await cloudEngine.current.resolve(current.current, choice);
+    } catch (error) {
+      setNotice((error as Error).message);
+    }
+  }
   function changeBook(update: Partial<Notebook>) {
     void persist(
       all.current.map((b) =>
@@ -538,6 +717,28 @@ function App() {
           ☰
         </button>
       </header>
+      {cloudEnabled &&
+        ["conflict", "missing", "pending"].includes(cloudState?.state) && (
+          <section className="cloud-banner" aria-label="Nextcloud sync">
+            <span>{cloudState.message}</span>
+            {cloudState.state === "conflict" && (
+              <>
+                <button onClick={() => void resolveCloud("remote")}>
+                  Use Nextcloud version
+                </button>
+                <button onClick={() => void resolveCloud("local")}>
+                  Keep this version
+                </button>
+              </>
+            )}
+            {cloudState.state === "missing" && (
+              <button onClick={() => void resolveCloud("recreate")}>
+                Recreate on Nextcloud
+              </button>
+            )}
+            <button onClick={() => scheduleSync(active, 0)}>Retry sync</button>
+          </section>
+        )}
       {menu && (
         <aside className="shelf">
           <div className="shelf-heading">
@@ -720,7 +921,7 @@ function App() {
                 <input
                   aria-label="Notebook tags"
                   placeholder="Ideas, homelab, journal…"
-                  key={active}
+                  key={active + ":" + renderVersion}
                   defaultValue={(book?.tags ?? []).join(", ")}
                   onBlur={(e) =>
                     changeBook({
@@ -825,16 +1026,17 @@ function App() {
                       Nextcloud connection
                     </button>
                     <button onClick={() => exportBoard(true)}>
-                      Publish a copy to Nextcloud
+                      Sync with Nextcloud now
                     </button>
                   </>
                 )}
               </div>
               <p className="connection-note">
-                Saved locally on this device. Nextcloud currently imports or
-                publishes separate copies. The folder can be changed in
-                Nextcloud connection. Automatic two-way sync and iCloud are
-                still in development.
+                Saved locally first. Once connected, notes refresh on opening
+                and sync automatically after edits. Files use the note name with
+                a .whiteboard extension. Offline edits retry on reopening or
+                reconnecting. Conflicting edits require choosing a version; the
+                other version is kept as a checkpoint. Trash stays local.
               </p>
               <p className="connection-note">
                 Shape libraries stay on this device across notebooks. Import
@@ -848,8 +1050,11 @@ function App() {
       <main>
         {loaded && book && (
           <Excalidraw
-            key={active}
-            excalidrawAPI={(a) => (api.current = a)}
+            key={active + ":" + renderVersion}
+            excalidrawAPI={(a) => {
+              api.current = a;
+              applyingRemote.current = null;
+            }}
             initialData={{
               ...book.scene,
               elements: restoreElements(book.scene.elements, null),
@@ -875,7 +1080,10 @@ function App() {
           />
         )}
       </main>
-      <footer role="status">{notice}</footer>
+      <footer role="status">
+        {notice}
+        {cloudEnabled && cloudState ? " · " + cloudState.message : ""}
+      </footer>
     </div>
   );
 }

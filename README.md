@@ -2,9 +2,9 @@
 
 A Catlyte notebook and whiteboard for handwritten notes, sketches and editable diagrams.
 
-**Status: expanded prototype, 0.2.0 build 4.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
+**Status: expanded prototype, 0.3.0 build 5.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
 
-See [0.2 release details](docs/RELEASE-0.2.md) and [Nextcloud folder/copy exchange guide](docs/NEXTCLOUD.md).
+See [0.3 release details](docs/RELEASE-0.3.md) and [Nextcloud automatic sync guide](docs/NEXTCLOUD.md).
 
 ## Available now
 
@@ -13,12 +13,12 @@ See [0.2 release details](docs/RELEASE-0.2.md) and [Nextcloud folder/copy exchan
 - Portable paper styles, persistent shape libraries, editable import/export, PNG and native PDF export.
 - Remembered light/dark appearance and new Catlyte-family cat-and-stylus icons and notebook artwork.
 - Native photo text recognition using Apple Vision, plus a review step for text extracted from selected ink or the whole board.
-- Native Nextcloud app-password connection (Keychain storage), listing/importing boards in your selected folder (default `Whisketch`), and publishing a uniquely named `.whiteboard` copy with create-only preconditions and readback verification.
+- Automatic Nextcloud file sync in the Apple apps: refresh when opening a note, debounced saves after edits, foreground/reconnection retries, conditional revision checks and checkpoint-backed conflict choices. Files use `Note name.whiteboard`; renames move the same linked file. App passwords stay in Keychain.
 - Local fonts/editor resources bundled with the Apple app; ordinary drawing requires no network or AI account.
 
 ## Boundaries of this prototype
 
-**Nextcloud exchange currently imports or publishes independent copies. It is not automatic two-way sync or live collaboration.** No existing remote board is overwritten. Authenticated testing against the owner's Nextcloud/Whiteboard installation remains pending; use of the same scene format does not establish full compatibility with its installed version.
+**Nextcloud file sync is available in the native Apple apps, not the standalone web editor.** It requires a saved Nextcloud connection and app password. New/opened or edited notes and already linked notes sync; an untouched local library is not bulk-uploaded. Existing saved connections are reused unless sync was explicitly paused. Files that changed on both sides require an explicit choice; the other version becomes a local checkpoint. Trash stays local, and remotely deleted files are not automatically recreated. This is not simultaneous live collaboration. Authenticated testing against the owner's Nextcloud installation remains pending.
 
 iCloud, stroke handwriting recognition/search, photo-to-editable-diagram reconstruction, Siri actions, AI provider integration, multi-page paper presentation and Joplin publishing remain planned. Photo OCR is not diagram reconstruction. Browser data can be cleared by the browser/OS: export important boards while recovery/versioning is being developed. Recognition results require review.
 

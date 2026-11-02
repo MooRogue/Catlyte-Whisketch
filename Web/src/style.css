@@ -672,3 +672,26 @@ main {
     object-position: 75% 15%;
   }
 }
+
+.cloud-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel, #fff4d6);
+  color: var(--ink, #343d38);
+  border-bottom: 1px solid #c2b68d;
+  font-size: 13px;
+}
+.cloud-banner span {
+  flex: 1 1 240px;
+}
+.shell.dark .cloud-banner {
+  background: #35382f;
+  color: #f0eee4;
+}
+.cloud-banner button {
+  padding: 6px 10px;
+  border-radius: 10px;
+}

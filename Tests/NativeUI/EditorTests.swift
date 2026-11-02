@@ -70,6 +70,7 @@ final class EditorTests: XCTestCase {
     let folder = app.textFields["Folder in Files"]
     XCTAssertTrue(folder.waitForExistence(timeout: 10))
     XCTAssertEqual(folder.value as? String, "Whisketch")
+    XCTAssertTrue(app.buttons["Connect and enable automatic sync"].exists)
     app.buttons["Done"].tap()
   }
 

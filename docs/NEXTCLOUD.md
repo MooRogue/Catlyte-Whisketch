@@ -1,13 +1,29 @@
-# Where Whisketch and Nextcloud Whiteboard store boards
+# Nextcloud files and automatic sync
 
-Whiteboard is a Nextcloud server app that opens `.whiteboard` documents from Files. It does not require a special global Whiteboard directory: boards can live wherever you put them within your Files account.
+Whiteboard opens `.whiteboard` documents in Nextcloud Files. There is no mandatory global Whiteboard directory. Whisketch defaults to **Files → Whisketch**, configurable under **Nextcloud connection**. `Notes/Whiteboards` selects a nested folder; an empty path selects your Files root, not a server filesystem path.
 
-Whisketch defaults to **Files → Whisketch**. In **Nextcloud connection**, enter your HTTPS server, username and an app password, then choose a folder relative to your Files root, such as `Whisketch` or `Notes/Whiteboards`. An empty folder selects your Files root. This is not a server filesystem path.
+## Connecting
 
-**Connect and list boards** reads the selected folder. It does not create directories or upload anything. **Publish a copy** creates missing folders and a uniquely named `.whiteboard` file, refuses to overwrite an existing file, and verifies the uploaded bytes by downloading them. Open that file in Nextcloud Files with Whiteboard enabled to edit it in a browser. **Import a copy** reads a board into a separate local notebook.
+Enter your HTTPS Nextcloud address, username and an app password. **Connect and enable automatic sync** saves credentials in Apple Keychain, lists the selected folder and enables syncing. Existing saved connections from 0.2 are reused automatically unless you explicitly paused sync. **Pause automatic sync** keeps local notes and remote files intact. Changing server, account or folder requires connecting to that scope; notes linked elsewhere are never silently uploaded into another account/folder.
 
-This release does **not** automatically keep those copies synchronized. Changes made in Nextcloud do not silently replace local work, and local edits are not pushed into an active web collaboration session. Use import/export copies while automatic sync and collaboration compatibility are being developed. No authenticated live round-trip against the owner's installation has been verified yet; installed Whiteboard version compatibility remains a test item.
+## Opening and editing
 
-Passwords stay in the Apple Keychain and are not included in notebook backups. Server/account/folder preferences are stored locally. Only the selected folder is listed; no unrelated server content is changed. Use an app password from Nextcloud's personal security settings rather than sharing your account password.
+Opening a local notebook refreshes its linked Nextcloud file. New/opened or edited notebooks are saved as `Note name.whiteboard` in the selected folder. There are no UUID or date suffixes. Filenames replace filesystem-invalid characters with hyphens, trim surrounding whitespace and use `Untitled` for an empty name. Same-name collisions require a choice or a different note title, rather than automatic numbered copies.
 
-Notebook covers, tags, favourites, Trash and checkpoints belong to Whisketch's local library. A **library backup** preserves them and your shape libraries. A single `.excalidraw` export preserves the drawing and its images/paper background. A stock web editor may discard app-specific metadata, so visual scene compatibility and Whisketch-only metadata should be tested separately.
+Edits save locally first and upload about 1.2 seconds after editing pauses. Already linked notes retry on app foreground/reconnection and every 15 seconds while the editor is visible. Offline changes survive restarting and are retried later; iOS can suspend the app, so continuous background sync is not promised. The footer reports waiting, syncing or saved status. Local covers/tags/favourites/checkpoints remain local metadata; the editable scene, images and paper background are synced.
+
+**Open a synced board** links a board from the selected Nextcloud folder to a local notebook. Opening an already linked board reuses it and reconciles pending changes rather than replacing them with another copy. Renaming a linked note performs a conditional move with destination overwrite disabled, then subsequent edits use that path. A remote move/rename currently appears as a missing file; open the moved file from its selected folder to reconnect it. Historical suffixed copy exports are left untouched.
+
+## Conflicts and recovery
+
+Each linked notebook persists a server/account/folder scope, URL and last synchronized content/revision. A clean local note pulls remote edits; a changed local note uploads only if the remote revision still matches. Both-side edits, name collisions and revision races never authorize a blind overwrite. Choose **Use Nextcloud version** or **Keep this version**; the other scene is preserved as a manual checkpoint (up to three). Rename-destination collisions can be resolved by choosing another title; choosing the remote version cancels the attempted local rename. A failed or missing strong revision tag stops unsafe writes.
+
+Moving a notebook to local Trash does not delete its server file. A remote deletion/move does not remove local work or automatically recreate the server file; **Recreate on Nextcloud** explicitly restores it with create-only protection. Backup restores are detached from old remote links and become separate notes, preserving existing cloud documents.
+
+## Scope and validation
+
+This is file synchronization, not live co-editing in a Whiteboard collaboration session. Avoid simultaneous browser editing; conflicts are reconciled on the next check. WebDAV transport and revision races are covered with mock-server tests, plus browser tests of native-bridge behavior. A live authenticated round trip against the owner's Nextcloud/Whiteboard version and physical Duo use remain unverified. No production Nextcloud documents were modified during implementation.
+
+The standalone web editor remains local-only. Passwords are not included in library backups or sent to the embedded JavaScript editor. The Apple app owns authenticated WebDAV requests, enforces HTTPS/same-origin redirects and selected-folder boundaries, and verifies uploaded bytes by reading them back.
+
+Reference: https://docs.nextcloud.com/server/latest/developer_manual/client_apis/WebDAV/basic.html

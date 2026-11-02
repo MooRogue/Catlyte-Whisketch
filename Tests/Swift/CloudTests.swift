@@ -6,6 +6,7 @@ import XCTest
   import FoundationNetworking
 #endif
 final class MockProtocol: URLProtocol {
+  static var headers = ["ETag": "\"revision-1\""]
   static var handler: ((URLRequest) throws -> (Int, Data))?
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -15,7 +16,7 @@ final class MockProtocol: URLProtocol {
       client?.urlProtocol(
         self,
         didReceive: HTTPURLResponse(
-          url: request.url!, statusCode: code, httpVersion: nil, headerFields: nil)!,
+          url: request.url!, statusCode: code, httpVersion: nil, headerFields: Self.headers)!,
         cacheStoragePolicy: .notAllowed)
       client?.urlProtocol(self, didLoad: data)
       client?.urlProtocolDidFinishLoading(self)
@@ -24,6 +25,7 @@ final class MockProtocol: URLProtocol {
   override func stopLoading() {}
 }
 final class CloudTests: XCTestCase {
+  override func setUp() { MockProtocol.headers = ["ETag": "\"revision-1\""] }
   let account = CloudAccount(server: "https://cloud.example/nextcloud", username: "a b")
   func client() -> NextcloudClient {
     let config = URLSessionConfiguration.ephemeral
@@ -48,7 +50,7 @@ final class CloudTests: XCTestCase {
         return (405, Data())
       case 2:
         XCTAssertEqual(r.value(forHTTPHeaderField: "If-None-Match"), "*")
-        XCTAssertTrue(r.url!.path.hasSuffix(".whiteboard"))
+        XCTAssertTrue(r.url!.path.hasSuffix("/a-b.whiteboard"))
         return (201, Data())
       default: return (200, Data(json.utf8))
       }
@@ -118,6 +120,109 @@ final class CloudTests: XCTestCase {
     _ = try await c.publishCopy(name: "nested", json: json)
     XCTAssertEqual(paths[0], "/remote.php/dav/files/alice/Notes")
     XCTAssertEqual(paths[1], "/remote.php/dav/files/alice/Notes/Whiteboards")
+  }
+
+  func testStableFileNameWithoutSuffix() throws {
+    XCTAssertEqual(
+      try client().fileURL(name: "Meeting notes").lastPathComponent, "Meeting notes.whiteboard")
+    XCTAssertEqual(try client().fileURL(name: "  ").lastPathComponent, "Untitled.whiteboard")
+  }
+  func testUpdatesRequireExactETagAndVerifyRevision() async throws {
+    var steps: [String] = []
+    let json = "{\"elements\":[],\"files\":{}}"
+    MockProtocol.handler = { r in
+      steps.append(r.httpMethod!)
+      if r.httpMethod == "MKCOL" { return (405, Data()) }
+      if r.httpMethod == "PUT" {
+        XCTAssertEqual(r.value(forHTTPHeaderField: "If-Match"), "\"old\"")
+        XCTAssertNil(r.value(forHTTPHeaderField: "If-None-Match"))
+        return (204, Data())
+      }
+      return (200, Data(json.utf8))
+    }
+    let c = client()
+    let saved = try await c.save(c.fileURL(name: "Stable"), json: json, etag: "\"old\"")
+    XCTAssertEqual(saved.etag, "\"revision-1\"")
+    XCTAssertEqual(steps, ["MKCOL", "PUT", "GET"])
+  }
+  func testStaleUpdateCannotOverwriteOrReadBackAsSuccess() async throws {
+    var gets = 0
+    MockProtocol.handler = { r in
+      if r.httpMethod == "GET" { gets += 1 }
+      return (r.httpMethod == "MKCOL" ? 405 : 412, Data())
+    }
+    let c = client()
+    do {
+      _ = try await c.save(c.fileURL(name: "Stable"), json: "{\"elements\":[]}", etag: "\"stale\"")
+      XCTFail("Must reject concurrent edits")
+    } catch CloudError.conflict {}
+    XCTAssertEqual(gets, 0)
+  }
+  func testMissingOrWeakETagRefusesUnsafeSynchronization() async throws {
+    let c = client()
+    let url = try c.fileURL(name: "Stable")
+    MockProtocol.handler = { _ in (200, Data("{\"elements\":[]}".utf8)) }
+    for headers in [[:], ["ETag": "W/\"weak\""]] {
+      MockProtocol.headers = headers
+      do {
+        _ = try await c.fetch(url)
+        XCTFail("Need a strong revision tag")
+      } catch CloudError.missingETag {}
+    }
+  }
+  func testRenameIsConditionalAndNeverOverwritesDestination() async throws {
+    let c = client()
+    let old = try c.fileURL(name: "Old")
+    let new = try c.fileURL(name: "New")
+    var methods: [String] = []
+    MockProtocol.handler = { r in
+      methods.append(r.httpMethod!)
+      if r.httpMethod == "MOVE" {
+        XCTAssertEqual(r.url, old)
+        XCTAssertEqual(r.value(forHTTPHeaderField: "Destination"), new.absoluteString)
+        XCTAssertEqual(r.value(forHTTPHeaderField: "Overwrite"), "F")
+        XCTAssertEqual(r.value(forHTTPHeaderField: "If-Match"), "\"old\"")
+        return (201, Data())
+      }
+      XCTAssertEqual(r.url, new)
+      return (200, Data("{\"elements\":[]}".utf8))
+    }
+    let moved = try await c.move(old, to: new, etag: "\"old\"")
+    XCTAssertEqual(moved.url, new.absoluteString)
+    XCTAssertEqual(methods, ["MOVE", "GET"])
+  }
+  func testSubfoldersAndQueryURLsCannotBeUsedAsFiles() async throws {
+    let c = client()
+    let root = try account.folder()
+    for url in [
+      root.appendingPathComponent("sub/Other.whiteboard"),
+      URL(string: root.absoluteString + "/a.whiteboard?token=x")!,
+    ] {
+      do {
+        _ = try await c.fetch(url)
+        XCTFail("Must reject paths outside selected directory")
+      } catch CloudError.unsafePath {}
+    }
+  }
+
+  func testEncodedTraversalIsRejectedBeforeSendingCredentials() async throws {
+    var requests = 0
+    MockProtocol.handler = { _ in
+      requests += 1
+      return (200, Data("{\"elements\":[]}".utf8))
+    }
+    let c = client()
+    let root = try account.folder().absoluteString.trimmingCharacters(
+      in: CharacterSet(charactersIn: "/"))
+    for name in [
+      "%2e%2e%2fOther.whiteboard", "%252e%252e%252fOther.whiteboard", "..%5cOther.whiteboard",
+    ] {
+      do {
+        _ = try await c.fetch(URL(string: root + "/" + name)!)
+        XCTFail("Reject encoded traversal")
+      } catch CloudError.unsafePath {}
+    }
+    XCTAssertEqual(requests, 0)
   }
 
 }

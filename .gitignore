@@ -13,3 +13,7 @@ xcuserdata/
 *.mobileprovision
 *.p8
 secrets/
+Native/Resources/Web/
+Artifacts/
+playwright-report/
+test-results/

@@ -1,0 +1,454 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2833B9D649BF047632C5A1F8 /* EditorResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7421D86F11CD3BB7A82A096D /* EditorResources.swift */; };
+		2B5EFF107409DDCF50262BE4 /* WhisketchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBA7E15F683AE6616F36181C /* WhisketchApp.swift */; };
+		6514F2F756299E2560B9AF32 /* NextcloudClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44D4D8AB55FEDCEF1B915D1 /* NextcloudClient.swift */; };
+		687317D8335E983F8A0E1A91 /* EditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE26A6676741A78E994A5F30 /* EditorTests.swift */; };
+		6D23EF2540CF17DEDDCDD40E /* PhotoRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */; };
+		96A7867B2A28388DB5E7590A /* Web in Resources */ = {isa = PBXBuildFile; fileRef = 8BF1F5485F8F2C311356B0F0 /* Web */; };
+		F2061A5FAA84A844E62E46A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7344E707AEEC8D192CD159B /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E194B089AD0C741B7EF10216 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 271ED3FF9CA26A42F1B937C8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9A6452BA7CF3FF787E4F797D;
+			remoteInfo = Whisketch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		54FD358F11511D8615F89F7E /* WhisketchUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WhisketchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7421D86F11CD3BB7A82A096D /* EditorResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorResources.swift; sourceTree = "<group>"; };
+		8BF1F5485F8F2C311356B0F0 /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Web; path = Native/Resources/Web; sourceTree = SOURCE_ROOT; };
+		BE26A6676741A78E994A5F30 /* EditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorTests.swift; sourceTree = "<group>"; };
+		D28BA177AD854F94AF7CF0B2 /* Whisketch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Whisketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D44D4D8AB55FEDCEF1B915D1 /* NextcloudClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextcloudClient.swift; sourceTree = "<group>"; };
+		D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoRecognizer.swift; sourceTree = "<group>"; };
+		EBA7E15F683AE6616F36181C /* WhisketchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisketchApp.swift; sourceTree = "<group>"; };
+		F7344E707AEEC8D192CD159B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		20937FC1E63DB84C0F74C0C3 = {
+			isa = PBXGroup;
+			children = (
+				8BF1F5485F8F2C311356B0F0 /* Web */,
+				E7336DD5CE970D77B7EA753C /* Native */,
+				BB62378023BEE5EC3A8D6614 /* NativeUI */,
+				330EA6D4CC61629C8F5AD350 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		330EA6D4CC61629C8F5AD350 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D28BA177AD854F94AF7CF0B2 /* Whisketch.app */,
+				54FD358F11511D8615F89F7E /* WhisketchUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BB62378023BEE5EC3A8D6614 /* NativeUI */ = {
+			isa = PBXGroup;
+			children = (
+				BE26A6676741A78E994A5F30 /* EditorTests.swift */,
+			);
+			name = NativeUI;
+			path = Tests/NativeUI;
+			sourceTree = "<group>";
+		};
+		E32BE5D8BD8DFA48862F259F /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				D44D4D8AB55FEDCEF1B915D1 /* NextcloudClient.swift */,
+				D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		E7336DD5CE970D77B7EA753C /* Native */ = {
+			isa = PBXGroup;
+			children = (
+				F7344E707AEEC8D192CD159B /* Assets.xcassets */,
+				7421D86F11CD3BB7A82A096D /* EditorResources.swift */,
+				EBA7E15F683AE6616F36181C /* WhisketchApp.swift */,
+				E32BE5D8BD8DFA48862F259F /* Core */,
+			);
+			path = Native;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9A6452BA7CF3FF787E4F797D /* Whisketch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F3A35677CE507C7D57E29D67 /* Build configuration list for PBXNativeTarget "Whisketch" */;
+			buildPhases = (
+				7F11ACE4236CC06F4022AD91 /* Sources */,
+				8CB75F17E0EE07DE7806F1C7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Whisketch;
+			packageProductDependencies = (
+			);
+			productName = Whisketch;
+			productReference = D28BA177AD854F94AF7CF0B2 /* Whisketch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DDC4C9014E323E58F2C06397 /* WhisketchUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5D351F8CA9B831B3C9BAFA0B /* Build configuration list for PBXNativeTarget "WhisketchUITests" */;
+			buildPhases = (
+				8CAF8C40B6F6191824E0304A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1AEC683F80EF1C6DEE7E7C6D /* PBXTargetDependency */,
+			);
+			name = WhisketchUITests;
+			packageProductDependencies = (
+			);
+			productName = WhisketchUITests;
+			productReference = 54FD358F11511D8615F89F7E /* WhisketchUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		271ED3FF9CA26A42F1B937C8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					9A6452BA7CF3FF787E4F797D = {
+						DevelopmentTeam = 6PGL458FD6;
+						ProvisioningStyle = Automatic;
+					};
+					DDC4C9014E323E58F2C06397 = {
+						TestTargetID = 9A6452BA7CF3FF787E4F797D;
+					};
+				};
+			};
+			buildConfigurationList = 5F23449762791DFEBF5F143B /* Build configuration list for PBXProject "Whisketch" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 20937FC1E63DB84C0F74C0C3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 330EA6D4CC61629C8F5AD350 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9A6452BA7CF3FF787E4F797D /* Whisketch */,
+				DDC4C9014E323E58F2C06397 /* WhisketchUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8CB75F17E0EE07DE7806F1C7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F2061A5FAA84A844E62E46A3 /* Assets.xcassets in Resources */,
+				96A7867B2A28388DB5E7590A /* Web in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7F11ACE4236CC06F4022AD91 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2833B9D649BF047632C5A1F8 /* EditorResources.swift in Sources */,
+				6514F2F756299E2560B9AF32 /* NextcloudClient.swift in Sources */,
+				6D23EF2540CF17DEDDCDD40E /* PhotoRecognizer.swift in Sources */,
+				2B5EFF107409DDCF50262BE4 /* WhisketchApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8CAF8C40B6F6191824E0304A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				687317D8335E983F8A0E1A91 /* EditorTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1AEC683F80EF1C6DEE7E7C6D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9A6452BA7CF3FF787E4F797D /* Whisketch */;
+			targetProxy = E194B089AD0C741B7EF10216 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		332A3CD15302102A01F699E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch.UITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Whisketch;
+			};
+			name = Release;
+		};
+		3954BB9238AB4B32D51EB1CC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch.UITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Whisketch;
+			};
+			name = Debug;
+		};
+		45EF9D912D3FE3D358C6912B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6PGL458FD6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
+				PRODUCT_NAME = Whisketch;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5E53318F785B5333F5E618AD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8F74CAD4C1CA8A8DDF8189A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		915AB0229CB5D017902A653D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6PGL458FD6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
+				PRODUCT_NAME = Whisketch;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5D351F8CA9B831B3C9BAFA0B /* Build configuration list for PBXNativeTarget "WhisketchUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3954BB9238AB4B32D51EB1CC /* Debug */,
+				332A3CD15302102A01F699E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5F23449762791DFEBF5F143B /* Build configuration list for PBXProject "Whisketch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E53318F785B5333F5E618AD /* Debug */,
+				8F74CAD4C1CA8A8DDF8189A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F3A35677CE507C7D57E29D67 /* Build configuration list for PBXNativeTarget "Whisketch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				915AB0229CB5D017902A653D /* Debug */,
+				45EF9D912D3FE3D358C6912B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 271ED3FF9CA26A42F1B937C8 /* Project object */;
+}

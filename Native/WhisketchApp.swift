@@ -10,6 +10,7 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
   @Published var showImport = false
   @Published var exportURL: URL?
   @Published var error: String?
+  @Published var recognition: RecognizedText?
   var pendingPublish: (String, String)?
   func userContentController(
     _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
@@ -19,20 +20,65 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
     }
     switch type {
     case "error": error = obj["message"] as? String
-    case "connect": showCloud = true
+    case "connect":
+      pendingPublish = nil
+      showCloud = true
     case "ocr": showImport = true
     case "publish":
       if let name = obj["name"] as? String, let json = obj["json"] as? String {
         pendingPublish = (name, json)
         showCloud = true
       }
-    case "export":
+    case "recognizeBoard":
+      guard let text = obj["data"] as? String, let comma = text.firstIndex(of: ","),
+        let data = Data(base64Encoded: String(text[text.index(after: comma)...]))
+      else { return }
+      Task { @MainActor in
+        do {
+          let result = try await Task.detached(priority: .userInitiated) {
+            try PhotoRecognizer.text(in: data)
+          }.value
+          guard !result.isEmpty else {
+            self.error =
+              "No text was recognized. Try selecting a smaller area or clearer handwriting."
+            return
+          }
+          recognition = RecognizedText(text: result)
+        } catch { self.error = error.localizedDescription }
+      }
+    case "exportImage", "exportPDF":
+      guard let name = obj["name"] as? String, let text = obj["data"] as? String,
+        let comma = text.firstIndex(of: ","),
+        let data = Data(base64Encoded: String(text[text.index(after: comma)...]))
+      else { return }
+      do {
+        let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(
+          of: "\\", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(
+          String(safe.prefix(100)) + (type == "exportPDF" ? ".pdf" : ".png"))
+        var output = data
+        if type == "exportPDF", let image = UIImage(data: data) {
+          let page = CGRect(x: 0, y: 0, width: 595, height: 842)
+          output = UIGraphicsPDFRenderer(bounds: page).pdfData { context in
+            context.beginPage()
+            let scale = min(555 / image.size.width, 802 / image.size.height)
+            let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            image.draw(
+              in: CGRect(
+                x: (595 - size.width) / 2, y: (842 - size.height) / 2, width: size.width,
+                height: size.height))
+          }
+        }
+        try output.write(to: url, options: .atomic)
+        exportURL = url
+      } catch { self.error = error.localizedDescription }
+    case "export", "exportBackup":
       guard let name = obj["name"] as? String, let json = obj["json"] as? String else { return }
       do {
         let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(
           of: "\\", with: "-")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
-          String(safe.prefix(100)) + ".excalidraw")
+          String(safe.prefix(100)) + (type == "exportBackup" ? ".json" : ".excalidraw"))
         try Data(json.utf8).write(to: url, options: .atomic)
         exportURL = url
       } catch { self.error = error.localizedDescription }
@@ -145,11 +191,15 @@ struct CloudSheet: View {
     UserDefaults.standard.string(forKey: "cloudServer") ?? "https://nextcloud.genkizone.com"
   @State var user = UserDefaults.standard.string(forKey: "cloudUser") ?? ""
   @State var password = ""
+  @State var folder = UserDefaults.standard.string(forKey: "cloudFolder") ?? "Whisketch"
   @State var boards: [CloudBoard] = []
-  @State var status = "Connect with a Nextcloud app password. Only the Whisketch folder is used."
+  @State var status =
+    "Connect with a Nextcloud app password, then select where your whiteboard files live."
   @State var busy = false
   var account: CloudAccount {
-    CloudAccount(server: server.trimmingCharacters(in: .whitespacesAndNewlines), username: user)
+    CloudAccount(
+      server: server.trimmingCharacters(in: .whitespacesAndNewlines), username: user,
+      folderPath: folder)
   }
   func work(_ action: @escaping (NextcloudClient) async throws -> Void) {
     busy = true
@@ -171,15 +221,21 @@ struct CloudSheet: View {
           TextField("Username", text: $user).textInputAutocapitalization(.never)
             .autocorrectionDisabled()
           SecureField("App password", text: $password)
+          TextField("Folder in Files", text: $folder).textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+          Text(
+            "Files → \(folder.isEmpty ? "All files" : folder). Whiteboard files can live in any folder. New copies are created here only when you publish."
+          ).font(.footnote)
           Button("Connect and list boards") {
             work { client in
               boards = try await client.boards()
               try PasswordStore.save(password, for: account)
               UserDefaults.standard.set(account.server, forKey: "cloudServer")
               UserDefaults.standard.set(user, forKey: "cloudUser")
+              UserDefaults.standard.set(folder, forKey: "cloudFolder")
               status =
                 boards.isEmpty
-                ? "Connected. No editable boards in Whisketch yet."
+                ? "Connected. No editable boards in the selected folder yet."
                 : "Connected. Select a board to import a local copy."
             }
           }.disabled(busy || user.isEmpty || password.isEmpty)
@@ -225,6 +281,14 @@ struct CloudSheet: View {
       }.navigationTitle("Nextcloud").toolbar {
         ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
       }.onAppear { password = PasswordStore.read(account) }
+        .onChange(of: server) { _, _ in
+          password = PasswordStore.read(account)
+          boards = []
+        }
+        .onChange(of: user) { _, _ in
+          password = PasswordStore.read(account)
+          boards = []
+        }
     }
   }
 }
@@ -240,6 +304,7 @@ struct ShareSheet: UIViewControllerRepresentable {
   var body: some Scene {
     WindowGroup {
       Editor(bridge: bridge)
+        .sheet(item: $bridge.recognition) { RecognitionSheet(bridge: bridge, text: $0.text) }
         .sheet(isPresented: $bridge.showCloud) { CloudSheet(bridge: bridge) }
         .sheet(
           item: Binding(
@@ -261,6 +326,38 @@ struct ShareSheet: UIViewControllerRepresentable {
         } message: {
           Text(bridge.error ?? "")
         }
+    }
+  }
+}
+struct RecognizedText: Identifiable {
+  let id = UUID()
+  let text: String
+}
+struct RecognitionSheet: View {
+  @ObservedObject var bridge: Bridge
+  @Environment(\.dismiss) var dismiss
+  @State var text: String
+  init(bridge: Bridge, text: String) {
+    self.bridge = bridge
+    self._text = State(initialValue: text)
+  }
+  var body: some View {
+    NavigationStack {
+      VStack(alignment: .leading, spacing: 16) {
+        Text(
+          "Review the extracted text before inserting it. Your original ink and drawings stay unchanged. Handwriting accuracy varies."
+        ).font(.callout).foregroundStyle(.secondary)
+        TextEditor(text: $text).font(.body).padding(8).background(.thinMaterial).clipShape(
+          RoundedRectangle(cornerRadius: 14))
+      }.padding().navigationTitle("Recognized text").toolbar {
+        ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Insert text") {
+            bridge.call("insertText", [text])
+            dismiss()
+          }.disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+      }
     }
   }
 }

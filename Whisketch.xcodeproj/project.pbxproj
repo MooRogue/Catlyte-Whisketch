@@ -249,10 +249,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6PGL458FD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Capture whiteboards and notes you choose to import into Whisketch.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save drawings you choose to export to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose photos to add to your notebooks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -261,7 +264,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
 				PRODUCT_NAME = Whisketch;
 				SDKROOT = iphoneos;
@@ -396,10 +399,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6PGL458FD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Capture whiteboards and notes you choose to import into Whisketch.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save drawings you choose to export to your photo library.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Choose photos to add to your notebooks.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -408,7 +414,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
 				PRODUCT_NAME = Whisketch;
 				SDKROOT = iphoneos;

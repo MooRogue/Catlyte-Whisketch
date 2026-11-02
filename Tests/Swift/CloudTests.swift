@@ -86,4 +86,38 @@ final class CloudTests: XCTestCase {
       XCTFail("Must reject foreign host")
     } catch {}
   }
+  func testFolderPathValidation() throws {
+    for path in ["../Books", "A/../B", "A//B", "A/%2e%2e", "A\\B"] {
+      XCTAssertThrowsError(
+        try CloudAccount(server: "https://cloud.example", username: "alice", folderPath: path)
+          .folder())
+    }
+    XCTAssertEqual(
+      try CloudAccount(
+        server: "https://cloud.example", username: "alice", folderPath: "Notes/Whiteboards"
+      ).folder().path, "/remote.php/dav/files/alice/Notes/Whiteboards")
+  }
+  func testNestedFoldersCreatedOnlyWhenPublishing() async throws {
+    let a = CloudAccount(
+      server: "https://cloud.example", username: "alice", folderPath: "Notes/Whiteboards")
+    let config = URLSessionConfiguration.ephemeral
+    config.protocolClasses = [MockProtocol.self]
+    let c = NextcloudClient(
+      account: a, password: "example", session: URLSession(configuration: config))
+    var paths: [String] = []
+    let json = "{\"elements\":[]}"
+    MockProtocol.handler = { request in
+      paths.append(request.url!.path)
+      if request.httpMethod == "MKCOL" { return (201, Data()) }
+      if request.httpMethod == "PUT" {
+        XCTAssertEqual(request.value(forHTTPHeaderField: "If-None-Match"), "*")
+        return (201, Data())
+      }
+      return (200, Data(json.utf8))
+    }
+    _ = try await c.publishCopy(name: "nested", json: json)
+    XCTAssertEqual(paths[0], "/remote.php/dav/files/alice/Notes")
+    XCTAssertEqual(paths[1], "/remote.php/dav/files/alice/Notes/Whiteboards")
+  }
+
 }

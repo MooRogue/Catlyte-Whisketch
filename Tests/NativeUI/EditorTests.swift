@@ -32,4 +32,45 @@ final class EditorTests: XCTestCase {
       add(screenshot)
     }
   }
+  func testCanvasTextRecognitionHasReviewStep() {
+    let app = XCUIApplication()
+    app.launch()
+    let notebooks = app.webViews.buttons["Open notebooks"]
+    XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
+    notebooks.tap()
+    app.webViews.buttons["Try a sample"].tap()
+    notebooks.tap()
+    let action = app.webViews.buttons["Extract text from selected ink or board"]
+    for _ in 0..<6 {
+      if action.isHittable { break }
+      app.webViews.firstMatch.swipeUp()
+    }
+    XCTAssertTrue(action.isHittable)
+    guard action.isHittable else { return }
+    action.tap()
+    XCTAssertTrue(
+      app.navigationBars["Recognized text"].waitForExistence(timeout: 30), app.debugDescription)
+    XCTAssertTrue(app.buttons["Insert text"].exists)
+    app.buttons["Cancel"].tap()
+  }
+  func testNextcloudFolderIsVisibleWithoutConnecting() {
+    let app = XCUIApplication()
+    app.launch()
+    let notebooks = app.webViews.buttons["Open notebooks"]
+    XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
+    notebooks.tap()
+    let action = app.webViews.buttons["Nextcloud connection"]
+    for _ in 0..<6 {
+      if action.isHittable { break }
+      app.webViews.firstMatch.swipeUp()
+    }
+    XCTAssertTrue(action.isHittable)
+    guard action.isHittable else { return }
+    action.tap()
+    let folder = app.textFields["Folder in Files"]
+    XCTAssertTrue(folder.waitForExistence(timeout: 10))
+    XCTAssertEqual(folder.value as? String, "Whisketch")
+    app.buttons["Done"].tap()
+  }
+
 }

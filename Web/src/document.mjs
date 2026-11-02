@@ -61,3 +61,30 @@ export function safeName(name) {
       .slice(0, 100) || "Untitled"
   );
 }
+
+export function parseBackup(value) {
+  const data = typeof value === "string" ? JSON.parse(value) : value;
+  if (
+    data?.type !== "whisketch-backup" ||
+    data.version !== 1 ||
+    !Array.isArray(data.notebooks) ||
+    data.notebooks.length > 500
+  )
+    throw new Error("This is not a supported Whisketch backup.");
+  const notebooks = data.notebooks.map((b) => {
+    if (!b || typeof b.title !== "string")
+      throw new Error("A notebook in this backup is invalid.");
+    return {
+      ...b,
+      scene: parseBoard(b.scene),
+      checkpoints: (b.checkpoints ?? [])
+        .slice(0, 3)
+        .map((v) => ({ ...v, scene: parseBoard(v.scene) })),
+      cover: /^#[0-9a-f]{6}$/i.test(b.cover ?? "") ? b.cover : undefined,
+    };
+  });
+  return {
+    notebooks,
+    shapeLibrary: Array.isArray(data.shapeLibrary) ? data.shapeLibrary : [],
+  };
+}

@@ -2,15 +2,18 @@
 
 A Catlyte notebook and whiteboard for handwritten notes, sketches and editable diagrams.
 
-**Status: first working prototype, 0.1.0 build 1.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
+**Status: expanded prototype, 0.2.0 build 4.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
+
+See [0.2 release details](docs/RELEASE-0.2.md) and [Nextcloud folder/copy exchange guide](docs/NEXTCLOUD.md).
 
 ## Available now
 
 - Excalidraw drawing, text, shapes, attached arrows, images and selection tools.
-- A local notebook library with IndexedDB saving, titles, search and editable import/export.
-- Light/dark editor appearance and an original cat-and-pencil icon.
-- Native photo text recognition using Apple Vision. Inserts the source photo alongside editable recognized text.
-- Native Nextcloud app-password connection (Keychain storage), listing/importing boards in `Whisketch`, and publishing a uniquely named `.whiteboard` copy with create-only preconditions and readback verification.
+- A notebook shelf with covers, tags, favourites, content search, templates, Trash recovery, checkpoints and whole-library backups.
+- Portable paper styles, persistent shape libraries, editable import/export, PNG and native PDF export.
+- Remembered light/dark appearance and new Catlyte-family cat-and-stylus icons and notebook artwork.
+- Native photo text recognition using Apple Vision, plus a review step for text extracted from selected ink or the whole board.
+- Native Nextcloud app-password connection (Keychain storage), listing/importing boards in your selected folder (default `Whisketch`), and publishing a uniquely named `.whiteboard` copy with create-only preconditions and readback verification.
 - Local fonts/editor resources bundled with the Apple app; ordinary drawing requires no network or AI account.
 
 ## Boundaries of this prototype

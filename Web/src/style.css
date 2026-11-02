@@ -185,3 +185,490 @@ aside p {
 .excalidraw .App-menu_top {
   padding-top: 4px;
 }
+/* Whisketch notebook shelf — original Catlyte design, inspired by tactile stationery. */
+.shell {
+  --bg: #f5f1e9;
+  --fg: #343d3a;
+  --line: #ddd8cc;
+  --accent: #e5e1f0;
+}
+.shell.dark {
+  --bg: #252c2d;
+  --fg: #f4efdf;
+  --line: #414a48;
+  --accent: #494458;
+}
+header {
+  height: 76px;
+  padding: 12px 22px;
+  background: var(--bg);
+  box-shadow: 0 2px 12px #00000006;
+  z-index: 11;
+}
+.brand {
+  font-family: Georgia, serif;
+  font-size: 23px;
+  font-weight: 500;
+}
+.brand small {
+  font: 10px system-ui;
+  letter-spacing: 0.6px;
+  opacity: 0.65;
+}
+.brand img {
+  width: 47px;
+  height: 47px;
+}
+.title {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  font-weight: 400;
+}
+.star {
+  font-size: 23px;
+  padding: 4px 9px;
+  border: 0;
+}
+.chosen {
+  color: #ad7424;
+}
+button,
+.fileButton {
+  border-radius: 12px;
+  font-size: 13px;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+button.primary {
+  background: #475f55;
+  color: #fff;
+  border-color: #475f55;
+}
+.shelf {
+  top: 76px;
+  bottom: 25px;
+  width: 100%;
+  max-width: none;
+  border: 0;
+  padding: 30px clamp(18px, 5vw, 80px);
+  box-shadow: none;
+  background: var(--bg);
+  z-index: 10;
+}
+.shelf-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+.shelf-heading h2 {
+  font:
+    38px Georgia,
+    serif;
+  margin: 8px 0;
+}
+.shelf-heading p {
+  font-size: 13px;
+  margin: 0;
+  opacity: 0.65;
+}
+.eyebrow {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #819185;
+}
+.shelf-heading > button {
+  font-size: 25px;
+  padding: 1px 12px;
+}
+.shelf-tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.shelf-tools > input {
+  flex: 1;
+  min-width: 180px;
+  max-width: 550px;
+}
+.shelf-tabs {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin: 24px 0;
+}
+.shelf-tabs > span {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.65;
+}
+.shelf-tabs button {
+  border: 0;
+}
+.notebooks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 26px;
+  max-width: 1250px;
+}
+.book-card {
+  min-width: 0;
+}
+.book-cover {
+  width: 100%;
+  min-height: 210px;
+  padding: 30px 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: var(--cover) !important;
+  color: #3e4745;
+  border: 1px solid #0001;
+  border-radius: 5px 14px 14px 5px;
+  box-shadow:
+    2px 5px 0 #e6e0d5,
+    3px 9px 18px #00000012;
+  gap: 12px;
+}
+.book-cover.active {
+  outline: 2px solid #789c8b;
+  outline-offset: 5px;
+}
+.book-cover strong {
+  font:
+    21px Georgia,
+    serif;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.book-spine {
+  position: absolute;
+  inset: 0 auto 0 12px;
+  width: 2px;
+  background: #00000008;
+  box-shadow: 3px 0 4px #00000009;
+}
+.book-emboss {
+  font-size: 27px;
+  color: #6c8175;
+  opacity: 0.65;
+}
+.cover-caption {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  opacity: 0.6;
+}
+.elastic {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 18px;
+  width: 6px;
+  background: #46554c35;
+  box-shadow: 1px 0 2px #0001;
+}
+.book-details {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 13px;
+  font-size: 10px;
+  opacity: 0.75;
+  gap: 8px;
+}
+.book-details button {
+  font-size: 10px;
+  padding: 3px 6px;
+}
+.notebook-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  max-width: 1000px;
+}
+.notebook-settings h3 {
+  font:
+    21px Georgia,
+    serif;
+  margin-bottom: 8px;
+}
+.notebook-settings > div > p {
+  font-size: 12px;
+  opacity: 0.65;
+}
+.notebook-settings label {
+  display: block;
+  font-size: 12px;
+  margin-top: 15px;
+}
+.notebook-settings input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+}
+.paper-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.paper-options button {
+  text-transform: capitalize;
+}
+.swatches {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.swatches button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #0002;
+  padding: 0;
+  border-radius: 50%;
+}
+.actions {
+  grid-template-columns: 1fr 1fr;
+}
+.connection-note {
+  font-size: 11px !important;
+  line-height: 1.7;
+}
+.empty-state {
+  padding: 35px 0;
+  font:
+    19px Georgia,
+    serif;
+  opacity: 0.7;
+}
+footer {
+  height: 25px;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  padding: 4px 18px;
+  background: var(--bg);
+}
+main {
+  background: #e8e5de;
+}
+.excalidraw {
+  --color-primary: #718f80;
+  --color-primary-darker: #425d4e;
+  --color-primary-darkest: #354a3e;
+}
+.shelf .notebooks small {
+  font-size: 10px;
+}
+@media (max-width: 650px) {
+  header {
+    height: 64px;
+    padding: 9px 10px;
+    gap: 6px;
+  }
+  .brand span {
+    display: none;
+  }
+  .brand img {
+    width: 38px;
+    height: 38px;
+  }
+  .title {
+    font-size: 16px;
+  }
+  .shelf {
+    top: 64px;
+    padding: 22px 18px;
+  }
+  .shelf-heading h2 {
+    font-size: 30px;
+  }
+  .notebooks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px 16px;
+  }
+  .book-cover {
+    min-height: 180px;
+    padding: 25px 20px;
+  }
+  .book-cover strong {
+    font-size: 18px;
+  }
+  .book-details {
+    font-size: 9px;
+  }
+  .notebook-settings {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .shelf-tabs > span {
+    display: none;
+  }
+  .shelf-tools {
+    gap: 7px;
+  }
+  .shelf-tools > input {
+    max-width: none;
+    flex-basis: 100%;
+  }
+  .actions {
+    grid-template-columns: 1fr;
+  }
+  .elastic {
+    right: 12px;
+    width: 5px;
+  }
+}
+.brand img {
+  border-radius: 11px;
+}
+.shelf-heading {
+  position: relative;
+  min-height: 175px;
+  padding: 28px 22px;
+  background: #fbf1df;
+  border-radius: 18px;
+  overflow: hidden;
+  color: #303f3d;
+}
+.shelf-heading > div {
+  position: relative;
+  z-index: 1;
+  max-width: 55%;
+}
+.library-art {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: 65%;
+  object-fit: cover;
+  object-position: 70% 56%;
+  opacity: 0.86;
+  mask-image: linear-gradient(90deg, transparent, #000 32%);
+}
+.shelf-heading > button {
+  position: relative;
+  z-index: 2;
+  background: #fff9;
+  border: 0;
+}
+.dark .shelf-heading {
+  background: #172e3c;
+  color: #f8efd9;
+}
+.dark .library-art {
+  opacity: 0.4;
+  mix-blend-mode: luminosity;
+}
+@media (max-width: 650px) {
+  .shelf-heading {
+    padding: 19px 15px;
+    min-height: 155px;
+  }
+  .shelf-heading > div {
+    max-width: 64%;
+  }
+  .shelf-heading h2 {
+    font-size: 27px;
+  }
+  .shelf-heading p {
+    font-size: 11px;
+  }
+  .shelf-heading .eyebrow {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .library-art {
+    width: 72%;
+    object-position: 75% 50%;
+    opacity: 0.55;
+  }
+}
+.templates {
+  margin-top: 25px;
+}
+.templates h3 {
+  font:
+    18px Georgia,
+    serif;
+  margin: 0 0 12px;
+}
+.templates > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.templates button {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 4px 6px;
+  text-align: left;
+  padding: 15px 12px;
+  background: #ffffff26;
+}
+.templates button > span {
+  grid-row: span 2;
+  font-size: 26px;
+  color: #738f80;
+}
+.templates strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.templates small {
+  font-size: 10px;
+  opacity: 0.6;
+}
+.checkpoints {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.checkpoints p {
+  font-size: 11px;
+  opacity: 0.65;
+}
+.checkpoints button {
+  display: block;
+  margin-top: 7px;
+}
+@media (max-width: 850px) {
+  .templates > div {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .templates > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .templates button {
+    padding: 11px 8px;
+  }
+  .templates small {
+    display: none;
+  }
+  .templates button > span {
+    grid-row: span 1;
+    font-size: 22px;
+  }
+}
+.notebook-settings .fileButton input {
+  display: none;
+}
+.library-art {
+  object-position: 70% 20%;
+}
+@media (max-width: 650px) {
+  .library-art {
+    object-position: 75% 15%;
+  }
+}

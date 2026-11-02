@@ -6,25 +6,52 @@ import Foundation
 struct CloudAccount: Codable {
   var server: String
   var username: String
+  var folderPath: String = "Whisketch"
   func baseURL() throws -> URL {
     guard let u = URL(string: server), u.scheme == "https", u.host != nil, u.user == nil,
       u.password == nil, u.query == nil, u.fragment == nil
     else { throw CloudError.invalidServer }
     return u
   }
-  func folder() throws -> URL {
-    try baseURL().appendingPathComponent("remote.php/dav/files").appendingPathComponent(username)
-      .appendingPathComponent("Whisketch", isDirectory: true)
+  func folderComponents() throws -> [String] {
+    let path = folderPath.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(
+      in: CharacterSet(charactersIn: "/"))
+    if path.isEmpty { return [] }
+    let components = path.components(separatedBy: "/")
+    guard
+      components.allSatisfy({
+        !$0.isEmpty && $0 != "." && $0 != ".." && !$0.contains("\\") && !$0.contains("%")
+          && $0.rangeOfCharacter(from: .controlCharacters) == nil
+      })
+    else { throw CloudError.invalidFolder }
+    return components
   }
+  func filesRoot() throws -> URL {
+    guard !username.isEmpty, username != ".", username != "..",
+      username.rangeOfCharacter(from: CharacterSet(charactersIn: "/\\%:").union(.controlCharacters))
+        == nil
+    else { throw CloudError.invalidFolder }
+    return try baseURL().appendingPathComponent("remote.php/dav/files").appendingPathComponent(
+      username, isDirectory: true)
+  }
+  func folder() throws -> URL {
+    try folderComponents().reduce(filesRoot()) { url, part in
+      url.appendingPathComponent(part, isDirectory: true)
+    }
+  }
+
 }
 enum CloudError: LocalizedError {
-  case invalidServer, invalidResponse
+  case invalidServer, invalidResponse, invalidFolder
   case http(Int)
   case unsafePath
   var errorDescription: String? {
     switch self {
     case .invalidServer:
       return "Enter an HTTPS Nextcloud address without credentials or query parameters."
+    case .invalidFolder:
+      return
+        "Use a folder path within your Nextcloud Files, such as Whisketch or Notes/Whiteboards. Relative path components are not allowed."
     case .invalidResponse: return "Unexpected response or saved-file verification failed."
     case .http(let code):
       return "Nextcloud returned HTTP \(code). Check your account, app password and permissions."
@@ -151,8 +178,12 @@ final class NextcloudClient {
       o["elements"] is [Any]
     else { throw CloudError.invalidResponse }
     let f = try account.folder()
-    let (_, mk) = try await request(f, method: "MKCOL")
-    guard [201, 405].contains(mk.statusCode) else { throw CloudError.http(mk.statusCode) }
+    var parent = try account.filesRoot()
+    for component in try account.folderComponents() {
+      parent = parent.appendingPathComponent(component, isDirectory: true)
+      let (_, mk) = try await request(parent, method: "MKCOL")
+      guard [201, 405].contains(mk.statusCode) else { throw CloudError.http(mk.statusCode) }
+    }
     let safe = name.components(
       separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|").union(.controlCharacters)
     ).joined(separator: "-").prefix(80)

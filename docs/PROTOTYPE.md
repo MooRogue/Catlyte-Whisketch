@@ -1,4 +1,4 @@
-# Prototype 0.1.0 build 2 — November 1, 2026
+# Prototype 0.1.0 build 3 — November 1, 2026
 
 ## Engineering decision
 
@@ -17,7 +17,7 @@ A stable `whisketch://localhost` resource handler serves bundled assets. Direct 
 
 ## Signing status
 
-After the account holder accepted Apple's updated Program License Agreement, provisioning succeeded. Whisketch is signed with the existing distribution certificate and the same four already registered devices, including Duo. Build 1 exposed a packaging defect: ditto added AppleDouble metadata files after signing, which broke the extracted signature. Build 2 uses a metadata-free ZIP and verifies the extracted app from the actual HTTPS download, as well as entitlements and ZIP integrity. The original pre-packaging check was insufficient. No device slots were added.
+After the account holder accepted Apple's updated Program License Agreement, provisioning succeeded. Whisketch is signed with the existing distribution certificate and the same four already registered devices, including Duo. Build 1 exposed a packaging defect: ditto added AppleDouble metadata files after signing, which broke the extracted signature. Build 2 removed those entries but exposed a second extraction defect: Python extraction did not restore the executable mode. Build 3 restores executable permissions, checks ZIP mode attributes and verifies the real HTTPS archive using a permission-preserving extractor, in addition to entitlements and ZIP integrity. The original pre-packaging check was insufficient. No device slots were added.
 
 The single install card is published at https://ipas.genkizone.com/index.html#whisketch and appears in Recent builds. Physical Duo installation/testing remains pending. This does not change the prototype's Nextcloud copy-exchange limitations.
 

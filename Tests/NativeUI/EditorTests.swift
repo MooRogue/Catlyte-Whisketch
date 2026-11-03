@@ -7,8 +7,10 @@ final class EditorTests: XCTestCase {
     let notebooks = app.webViews.buttons["Open notebooks"]
     XCTAssertTrue(notebooks.waitForExistence(timeout: 25), app.debugDescription)
     guard notebooks.exists else { return }
-    notebooks.tap()
-    app.webViews.buttons["Try a sample"].tap()
+    notebooks.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    app.webViews.buttons["Try a sample"].coordinate(
+      withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+    ).tap()
     let title = app.webViews.textFields["Notebook title"]
     XCTAssertTrue(title.waitForExistence(timeout: 10))
     XCTAssertEqual(title.value as? String, "Welcome to Whisketch")
@@ -37,9 +39,13 @@ final class EditorTests: XCTestCase {
     app.launch()
     let notebooks = app.webViews.buttons["Open notebooks"]
     XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
-    notebooks.tap()
-    app.webViews.buttons["Try a sample"].tap()
-    app.webViews.buttons["Notebook actions"].tap()
+    notebooks.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    app.webViews.buttons["Try a sample"].coordinate(
+      withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+    ).tap()
+    app.webViews.buttons["Notebook actions"].coordinate(
+      withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+    ).tap()
     let action = app.webViews.buttons["Extract text from selected ink or board"]
     for _ in 0..<6 {
       if action.isHittable { break }
@@ -47,18 +53,20 @@ final class EditorTests: XCTestCase {
     }
     XCTAssertTrue(action.isHittable)
     guard action.isHittable else { return }
-    action.tap()
+    action.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     XCTAssertTrue(
       app.navigationBars["Recognized text"].waitForExistence(timeout: 30), app.debugDescription)
     XCTAssertTrue(app.buttons["Insert text"].exists)
-    app.buttons["Cancel"].tap()
+    app.buttons["Cancel"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   }
   func testNextcloudFolderIsVisibleWithoutConnecting() {
     let app = XCUIApplication()
     app.launch()
     let notebooks = app.webViews.buttons["Open notebooks"]
     XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
-    app.webViews.buttons["Notebook actions"].tap()
+    app.webViews.buttons["Notebook actions"].coordinate(
+      withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)
+    ).tap()
     let action = app.webViews.buttons["Nextcloud connection"]
     for _ in 0..<6 {
       if action.isHittable { break }
@@ -66,12 +74,12 @@ final class EditorTests: XCTestCase {
     }
     XCTAssertTrue(action.isHittable)
     guard action.isHittable else { return }
-    action.tap()
+    action.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     let folder = app.textFields["Folder in Files"]
     XCTAssertTrue(folder.waitForExistence(timeout: 10))
     XCTAssertEqual(folder.value as? String, "Whisketch")
     XCTAssertTrue(app.buttons["Connect and enable automatic sync"].exists)
-    app.buttons["Done"].tap()
+    app.buttons["Done"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
   }
 
 }

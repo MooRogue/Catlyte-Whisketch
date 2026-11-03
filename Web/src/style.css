@@ -968,3 +968,176 @@ main {
 .focus .excalidraw > .App-bottom-bar {
   display: none;
 }
+
+/* A small illustrated welcome and a tactile, accessible tool shelf. */
+.ui-icon {
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.streamlined .shelf button:has(> .ui-icon),
+.template-picker > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.streamlined .shelf button {
+  border-radius: 15px;
+  min-height: 44px;
+}
+.streamlined .shelf button:focus-visible,
+.writing-tools button:focus-visible {
+  outline: 3px solid #329ca9;
+  outline-offset: 3px;
+}
+.streamlined .shelf-heading.illustrated-heading {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 128px;
+  padding: 22px;
+  border: 0;
+  border-radius: 24px;
+  background: #f6efdf;
+  color: #283d3d;
+}
+.streamlined .illustrated-heading .library-art {
+  z-index: -1;
+  height: 100%;
+  width: 62%;
+  object-fit: cover;
+  object-position: center;
+}
+.streamlined .illustrated-heading > div {
+  max-width: 55%;
+}
+.streamlined .illustrated-heading > button {
+  align-self: flex-start;
+  background: #fff9;
+  color: #283d3d;
+  border-radius: 50%;
+}
+.streamlined .actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.streamlined .actions > button,
+.streamlined .actions > .fileButton {
+  text-align: left;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 0 #00000005;
+}
+.streamlined .actions > button .ui-icon {
+  color: #318791;
+  background: #d5eee74d;
+  box-sizing: content-box;
+  padding: 8px;
+  border-radius: 12px;
+}
+.streamlined .shelf-tabs {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.streamlined .shelf-tabs button {
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+}
+.streamlined .shelf-tabs button.selected {
+  background: var(--accent);
+}
+.streamlined .paper-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.streamlined .paper-options button {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  padding: 7px;
+  background: transparent;
+}
+.streamlined .paper-options button.selected {
+  background: var(--accent);
+}
+.paper-preview {
+  display: block;
+  width: 38px;
+  height: 48px;
+  background-color: #fffdf7;
+  border: 1px solid #a3b2ad;
+  border-radius: 4px 9px 9px 4px;
+  box-shadow: -3px 2px 0 #a3b2ad40;
+}
+.paper-lined {
+  background-image: repeating-linear-gradient(
+    transparent 0 9px,
+    #b5c7d3 9px 10px
+  );
+}
+.paper-grid {
+  background-image:
+    linear-gradient(#b5c7d380 1px, transparent 1px),
+    linear-gradient(90deg, #b5c7d380 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.paper-dots {
+  background-image: radial-gradient(#9aaca7 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.paper-midnight {
+  background-color: #273541;
+}
+.writing-tools .ui-icon {
+  width: 24px;
+  height: 24px;
+}
+@media (max-width: 600px) {
+  .streamlined .shelf-heading.illustrated-heading {
+    min-height: 114px;
+    padding: 16px;
+  }
+  .streamlined .illustrated-heading h2 {
+    font-size: 24px;
+  }
+  .streamlined .illustrated-heading p {
+    max-width: 120px;
+  }
+  .streamlined .actions > button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+  }
+}
+.streamlined .actions > .fileButton {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 15px;
+}
+.streamlined .illustrated-heading > button {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 24px;
+}
+.streamlined .swatches button {
+  min-height: 36px;
+  border-radius: 50%;
+}
+.streamlined.dark .actions > button .ui-icon {
+  color: #9ae0d9;
+  background: #36534f;
+}

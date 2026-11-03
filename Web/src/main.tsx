@@ -48,6 +48,46 @@ const blank = (): any => ({
   appState: { viewBackgroundColor: "#fffdf7" },
   files: {},
 });
+// Original, shared line icons keep the tool shelf consistent at every size.
+function Icon({ name }: { name: string }) {
+  const paths: Record<string, string> = {
+    text: "M5 5h14M12 5v14M8 19h8",
+    freedraw: "m5 17-1 4 4-1L20 8l-4-4L5 17Zm9-11 4 4M5 17l3 3",
+    selection: "m5 3 14 10-7 1-3 7-4-18Z",
+    eraser:
+      "m4 14 9-10a2 2 0 0 1 3 0l5 5-10 11H8l-4-4a2 2 0 0 1 0-2Zm5-5 8 8M11 20h10",
+    book: "M5 3h14v18H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 0v18M10 7h6M10 11h4",
+    plus: "M12 5v14M5 12h14",
+    star: "m12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6Z",
+    trash: "M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7",
+    settings: "M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M9 15v6",
+    copy: "M9 8h12v13H9zM5 16H3V3h12v2",
+    save: "M4 3h13l4 4v14H3V3h1Zm3 0v7h10V3M7 21v-7h10v7",
+    export: "M12 15V3m-5 5 5-5 5 5M4 13v8h16v-8",
+    image: "M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6M16 8h.01",
+    shapes:
+      "M3 3h8v8H3zM17 3l5 8H12l5-8ZM8 15a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 2h6M19 14v8",
+    cloud:
+      "M6 18a5 5 0 0 1-1-10 7 7 0 0 1 13-1 5 5 0 0 1 0 11M9 15l3-3 3 3M12 12v9",
+    scan: "M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M7 8h10M7 12h10M7 16h6",
+    undo: "M8 4 3 9l5 5M3 9h10a7 7 0 0 1 7 7v4",
+    redo: "m16 4 5 5-5 5M21 9H11a7 7 0 0 0-7 7v4",
+  };
+  return (
+    <svg
+      className="ui-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.65"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[name] ?? paths.book} />
+    </svg>
+  );
+}
 function App() {
   const [books, setBooks] = useState<Notebook[]>([]),
     [active, setActive] = useState(""),
@@ -813,7 +853,15 @@ function App() {
         )}
       {menu && (
         <aside className="shelf">
-          <div className="shelf-heading">
+          <div
+            className={
+              "shelf-heading " +
+              (panel === "library" ? "illustrated-heading" : "")
+            }
+          >
+            {panel === "library" && (
+              <img className="library-art" src="./art/library.jpg" alt="" />
+            )}
             <div>
               <h2>{panel === "library" ? "Notebooks" : "Note settings"}</h2>
               <p>
@@ -833,13 +881,23 @@ function App() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
-                <button className="primary" onClick={() => add()}>
-                  ＋ New notebook
+                <button
+                  className="primary"
+                  aria-label="＋ New notebook"
+                  onClick={() => add()}
+                >
+                  <Icon name="plus" />
+                  <span>New notebook</span>
                 </button>
-                <button onClick={sample}>Try a sample</button>
+                <button onClick={sample}>
+                  <Icon name="freedraw" />
+                  <span>Try a sample</span>
+                </button>
               </div>
               <details className="template-picker">
-                <summary>Start from a template</summary>
+                <summary>
+                  <Icon name="shapes" /> Start from a template
+                </summary>
                 <section className="templates" aria-label="Notebook templates">
                   <div>
                     {templates.map((t) => (
@@ -864,7 +922,8 @@ function App() {
                     setFavorites(false);
                   }}
                 >
-                  All notebooks
+                  <Icon name="book" />
+                  <span>All notebooks</span>
                 </button>
                 <button
                   className={favorites ? "selected" : ""}
@@ -873,7 +932,8 @@ function App() {
                     setTrash(false);
                   }}
                 >
-                  Favorites
+                  <Icon name="star" />
+                  <span>Favorites</span>
                 </button>
                 <button
                   className={trash ? "selected" : ""}
@@ -882,7 +942,8 @@ function App() {
                     setFavorites(false);
                   }}
                 >
-                  Trash
+                  <Icon name="trash" />
+                  <span>Trash</span>
                 </button>
                 <span>
                   {visible.length}{" "}
@@ -964,7 +1025,8 @@ function App() {
                 </div>
               )}
               <button className="library-settings-link" onClick={noteSettings}>
-                Selected notebook settings
+                <Icon name="settings" />
+                <span>Selected notebook settings</span>
               </button>
             </>
           )}
@@ -999,7 +1061,10 @@ function App() {
                     setMenu(false);
                   }}
                 >
-                  {diagram ? "Use notebook tools" : "Advanced diagram tools"}
+                  <Icon name="shapes" />
+                  <span>
+                    {diagram ? "Use notebook tools" : "Advanced diagram tools"}
+                  </span>
                 </button>
                 <label>
                   Paper
@@ -1016,7 +1081,11 @@ function App() {
                           setMenu(false);
                         }}
                       >
-                        {x}
+                        <span
+                          aria-hidden="true"
+                          className={"paper-preview paper-" + x}
+                        />
+                        <small>{x}</small>
                       </button>
                     ))}
                   </div>
@@ -1079,7 +1148,10 @@ function App() {
                   </details>
                 )}
                 <div className="actions">
-                  <button onClick={duplicate}>Duplicate notebook</button>
+                  <button onClick={duplicate}>
+                    <Icon name="copy" />
+                    <span>Duplicate notebook</span>
+                  </button>
                   <button
                     onClick={() =>
                       changeBook({
@@ -1095,16 +1167,21 @@ function App() {
                       })
                     }
                   >
-                    Save checkpoint
+                    <Icon name="save" />
+                    <span>Save checkpoint</span>
                   </button>
-                  <button onClick={removeBook}>Move notebook to Trash</button>
+                  <button onClick={removeBook}>
+                    <Icon name="trash" />
+                    <span>Move notebook to Trash</span>
+                  </button>
                 </div>
               </div>
               <div>
                 <h3>Share & connect</h3>
                 <div className="actions">
                   <label className="fileButton">
-                    Import board, library or backup
+                    <Icon name="book" />
+                    <span>Import board, library or backup</span>
                     <input
                       type="file"
                       accept=".excalidraw,.whiteboard,.json,.excalidrawlib"
@@ -1115,12 +1192,17 @@ function App() {
                       }}
                     />
                   </label>
-                  <button onClick={exportBackup}>Export library backup</button>
+                  <button onClick={exportBackup}>
+                    <Icon name="save" />
+                    <span>Export library backup</span>
+                  </button>
                   <button onClick={() => exportBoard()}>
-                    Export editable board
+                    <Icon name="export" />
+                    <span>Export editable board</span>
                   </button>
                   <button onClick={() => void exportImage()}>
-                    Export PNG image
+                    <Icon name="image" />
+                    <span>Export PNG image</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1133,26 +1215,32 @@ function App() {
                       });
                     }}
                   >
-                    Add Catlyte homelab shapes
+                    <Icon name="shapes" />
+                    <span>Add Catlyte homelab shapes</span>
                   </button>
                   {window.webkit?.messageHandlers?.whisketch && (
                     <button onClick={() => void exportImage(true)}>
-                      Export PDF
+                      <Icon name="export" />
+                      <span>Export PDF</span>
                     </button>
                   )}
                   {window.webkit?.messageHandlers?.whisketch && (
                     <>
                       <button onClick={() => void exportImage(false, true)}>
-                        Extract text from selected ink or board
+                        <Icon name="scan" />
+                        <span>Extract text from selected ink or board</span>
                       </button>
                       <button onClick={() => native({ type: "ocr" })}>
-                        Recognize text in a photo
+                        <Icon name="image" />
+                        <span>Recognize text in a photo</span>
                       </button>
                       <button onClick={() => native({ type: "connect" })}>
-                        Nextcloud connection
+                        <Icon name="cloud" />
+                        <span>Nextcloud connection</span>
                       </button>
                       <button onClick={() => exportBoard(true)}>
-                        Sync with Nextcloud now
+                        <Icon name="cloud" />
+                        <span>Sync with Nextcloud now</span>
                       </button>
                     </>
                   )}
@@ -1248,7 +1336,7 @@ function App() {
               ["freedraw", "✎", "Draw"],
               ["selection", "↖", "Select"],
               ["eraser", "⌫", "Erase"],
-            ].map(([type, icon, label]) => (
+            ].map(([type, , label]) => (
               <button
                 key={type}
                 aria-label={label}
@@ -1256,7 +1344,7 @@ function App() {
                 className={tool === type ? "selected" : ""}
                 onClick={() => chooseTool(type as PageTool)}
               >
-                <span aria-hidden="true">{icon}</span>
+                <Icon name={type} />
                 <small>{label}</small>
               </button>
             ))}
@@ -1278,14 +1366,14 @@ function App() {
               title="Undo"
               onClick={() => historyStep()}
             >
-              ↶
+              <Icon name="undo" />
             </button>
             <button
               aria-label="Redo"
               title="Redo"
               onClick={() => historyStep(true)}
             >
-              ↷
+              <Icon name="redo" />
             </button>
           </nav>
         )}

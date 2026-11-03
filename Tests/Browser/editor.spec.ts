@@ -1,4 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+async function noteActions(page: Page) {
+  if (!(await page.locator(".notebook-settings").isVisible()))
+    await page
+      .getByRole("button", { name: "Notebook actions", exact: true })
+      .click();
+}
+
 test("draw, persist across reload, export and reimport without losing images or metadata", async ({
   page,
 }) => {
@@ -70,6 +77,7 @@ test("draw, persist across reload, export and reimport without losing images or 
   await expect(page.getByRole("status")).toHaveText("Saved on this device");
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const downloadPromise = page.waitForEvent("download");
+  await noteActions(page);
   await page.getByRole("button", { name: "Export editable board" }).click();
   const download = await downloadPromise;
   const fs = await import("node:fs/promises");
@@ -103,6 +111,7 @@ test("image attachment remains editable and survives reopening", async ({
   await page.reload();
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const promise = page.waitForEvent("download");
+  await noteActions(page);
   await page.getByRole("button", { name: "Export editable board" }).click();
   const d = await promise;
   const fs = await import("node:fs/promises");
@@ -134,10 +143,7 @@ test("switching notebooks keeps their scenes separate", async ({ page }) => {
 test("pointer drawing creates editable ink objects", async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(() => window.Whisketch?.isReady());
-  await page
-    .getByRole("radio", { name: "Draw", exact: true })
-    .locator("..")
-    .click();
+  await page.getByRole("button", { name: "Draw", exact: true }).click();
   await page.mouse.move(350, 350);
   await page.mouse.down();
   await page.mouse.move(430, 400, { steps: 8 });
@@ -146,6 +152,7 @@ test("pointer drawing creates editable ink objects", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("Saved on this device");
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const promise = page.waitForEvent("download");
+  await noteActions(page);
   await page.getByRole("button", { name: "Export editable board" }).click();
   const d = await promise;
   const fs = await import("node:fs/promises");
@@ -162,9 +169,11 @@ test("notebook favorites, content search, duplication and trash recovery", async
   await page.waitForFunction(() => window.Whisketch?.isReady());
   await page.getByRole("button", { name: "Open notebooks" }).click();
   await page.getByRole("button", { name: "Try a sample" }).click();
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Favorite notebook", exact: true })
     .click();
+  await noteActions(page);
   await expect(
     page.getByRole("button", { name: "Favorite notebook", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -174,6 +183,7 @@ test("notebook favorites, content search, duplication and trash recovery", async
     page.getByRole("button", { name: /Welcome to Whisketch.*6 objects/ }),
   ).toBeVisible();
   await page.getByRole("textbox", { name: "Find a notebook" }).fill("");
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Duplicate notebook", exact: true })
     .click();
@@ -181,6 +191,7 @@ test("notebook favorites, content search, duplication and trash recovery", async
     page.getByRole("textbox", { name: "Notebook title", exact: true }),
   ).toHaveValue("Welcome to Whisketch copy");
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await noteActions(page);
   await page.getByRole("button", { name: "Move notebook to Trash" }).click();
   await page.getByRole("button", { name: "Trash", exact: true }).click();
   await page
@@ -200,10 +211,12 @@ test("paper backgrounds survive editable export and PNG rendering", async ({
   await page.goto("/");
   await page.waitForFunction(() => window.Whisketch?.isReady());
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await noteActions(page);
   await page.getByRole("button", { name: "Use grid paper" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved on this device");
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const d = page.waitForEvent("download");
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Export editable board", exact: true })
     .click();
@@ -217,6 +230,7 @@ test("paper backgrounds survive editable export and PNG rendering", async ({
   ).toBe(true);
   expect(Object.keys(scene.files).length).toBeGreaterThan(0);
   const image = page.waitForEvent("download");
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Export PNG image", exact: true })
     .click();
@@ -224,6 +238,7 @@ test("paper backgrounds survive editable export and PNG rendering", async ({
   expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   await page.reload();
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await noteActions(page);
   await expect(
     page.getByRole("button", { name: "Use grid paper" }),
   ).toHaveClass(/selected/);
@@ -281,11 +296,13 @@ test("templates and checkpoints keep earlier work recoverable", async ({
   await page.goto("/");
   await page.waitForFunction(() => window.Whisketch?.isReady());
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await page.getByText("Start from a template", { exact: true }).click();
   await page.getByRole("button", { name: "Use Homelab map template" }).click();
   await expect(
     page.getByRole("textbox", { name: "Notebook title", exact: true }),
   ).toHaveValue("Homelab map");
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Save checkpoint", exact: true })
     .click();
@@ -298,6 +315,7 @@ test("templates and checkpoints keep earlier work recoverable", async ({
     page.getByRole("textbox", { name: "Notebook title", exact: true }),
   ).toHaveValue("Homelab map recovered");
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Add Catlyte homelab shapes", exact: true })
     .click();
@@ -307,6 +325,7 @@ test("appearance choice survives reopening", async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(() => window.Whisketch?.isReady());
   const previous = await page.locator(".shell").getAttribute("class");
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Toggle appearance", exact: true })
     .click();
@@ -322,11 +341,13 @@ test("library backups restore separate notebooks and preserve favorites", async 
 }) => {
   await page.goto("/");
   await page.waitForFunction(() => window.Whisketch?.isReady());
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Favorite notebook", exact: true })
     .click();
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const promise = page.waitForEvent("download");
+  await noteActions(page);
   await page
     .getByRole("button", { name: "Export library backup", exact: true })
     .click();
@@ -342,6 +363,7 @@ test("library backups restore separate notebooks and preserve favorites", async 
   await expect(
     page.getByRole("textbox", { name: "Notebook title", exact: true }),
   ).toHaveValue("My first notebook restored");
+  await noteActions(page);
   await expect(
     page.getByRole("button", { name: "Favorite notebook", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");

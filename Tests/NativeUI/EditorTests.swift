@@ -39,7 +39,7 @@ final class EditorTests: XCTestCase {
     XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
     notebooks.tap()
     app.webViews.buttons["Try a sample"].tap()
-    notebooks.tap()
+    app.webViews.buttons["Notebook actions"].tap()
     let action = app.webViews.buttons["Extract text from selected ink or board"]
     for _ in 0..<6 {
       if action.isHittable { break }
@@ -58,7 +58,7 @@ final class EditorTests: XCTestCase {
     app.launch()
     let notebooks = app.webViews.buttons["Open notebooks"]
     XCTAssertTrue(notebooks.waitForExistence(timeout: 25))
-    notebooks.tap()
+    app.webViews.buttons["Notebook actions"].tap()
     let action = app.webViews.buttons["Nextcloud connection"]
     for _ in 0..<6 {
       if action.isHittable { break }

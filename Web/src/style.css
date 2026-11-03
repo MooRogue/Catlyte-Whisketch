@@ -695,3 +695,276 @@ main {
   padding: 6px 10px;
   border-radius: 10px;
 }
+
+/* A quiet notebook surface: content first, tools only where they are needed. */
+.streamlined header {
+  height: 56px;
+  padding: 6px 14px;
+  gap: 10px;
+  box-shadow: none;
+}
+.streamlined .brand {
+  font:
+    14px system-ui,
+    sans-serif;
+  gap: 7px;
+  padding: 4px;
+}
+.streamlined .brand img {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.streamlined .brand span {
+  display: inline;
+}
+.streamlined header .title {
+  font:
+    19px Georgia,
+    serif;
+  text-align: center;
+  min-width: 0;
+}
+.streamlined header .more,
+.streamlined .focus-toggle {
+  width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  padding: 4px;
+}
+.streamlined main {
+  padding: 14px 18px 20px;
+  background: #e9e5dd;
+}
+.streamlined.dark main {
+  background: #1b2223;
+}
+.page-surface {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 14px #00000012;
+  background: #fffdf7;
+}
+.streamlined .shelf {
+  top: 56px;
+  bottom: 22px;
+  padding: 22px clamp(18px, 5vw, 72px);
+}
+.streamlined .shelf-heading,
+.streamlined.dark .shelf-heading {
+  min-height: 0;
+  padding: 0 0 18px;
+  margin-bottom: 14px;
+  background: transparent;
+  border-radius: 0;
+  color: var(--fg);
+  overflow: visible;
+  border-bottom: 1px solid var(--line);
+}
+.streamlined .shelf-heading > div {
+  max-width: none;
+}
+.streamlined .shelf-heading h2 {
+  font-size: 30px;
+  margin: 0 0 4px;
+}
+.streamlined .shelf-heading p {
+  font-size: 12px;
+}
+.streamlined .shelf-heading > button {
+  background: transparent;
+  min-width: 44px;
+  min-height: 44px;
+}
+.streamlined .templates {
+  margin: 12px 0 20px;
+}
+.template-picker {
+  margin: 16px 0;
+}
+.template-picker > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fg);
+  opacity: 0.75;
+  padding: 8px 0;
+}
+.streamlined .notebooks {
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 22px 24px;
+}
+.streamlined .book-cover {
+  min-height: 185px;
+}
+.streamlined .book-emboss {
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+.streamlined .cover-caption {
+  display: none;
+}
+.streamlined .book-details {
+  font-size: 10px;
+}
+.streamlined .notebook-settings {
+  margin-top: 0;
+  border: 0;
+  padding-top: 0;
+  gap: 30px;
+}
+.streamlined .notebook-settings h3 {
+  font-size: 19px;
+  margin: 12px 0;
+}
+.note-preferences {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 18px;
+}
+.note-preferences button {
+  min-height: 44px;
+}
+.library-settings-link {
+  margin-top: 24px;
+  font-size: 12px;
+}
+.writing-tools {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--bg);
+  box-shadow: 0 5px 25px #0002;
+  max-width: calc(100% - 20px);
+}
+.writing-tools button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 48px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 13px;
+}
+.writing-tools button.selected {
+  background: var(--accent);
+}
+.writing-tools button span {
+  font-size: 21px;
+  line-height: 23px;
+}
+.writing-tools button small {
+  font-size: 9px;
+  line-height: 11px;
+}
+.ink-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 44px;
+}
+.ink-picker input {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.notebook-tools-return,
+.restore-controls {
+  position: absolute;
+  z-index: 15;
+  bottom: 32px;
+  right: 24px;
+  min-height: 44px;
+  box-shadow: 0 3px 15px #0002;
+  font-size: 12px;
+  border-radius: 18px;
+}
+.restore-controls {
+  top: 10px;
+  right: 14px;
+  bottom: auto;
+  opacity: 0.75;
+}
+.streamlined footer {
+  height: 22px;
+  font-size: 10px;
+  background: var(--bg);
+  opacity: 0.8;
+}
+.streamlined.focus header,
+.streamlined.focus footer {
+  display: none;
+}
+.streamlined.focus main {
+  padding: 0;
+}
+.streamlined.focus .page-surface {
+  border-radius: 0;
+  box-shadow: none;
+}
+@media (max-width: 600px) {
+  .streamlined header {
+    gap: 5px;
+    padding: 4px 8px;
+  }
+  .streamlined .brand span {
+    display: none;
+  }
+  .streamlined header .title {
+    font-size: 18px;
+  }
+  .streamlined main {
+    padding: 8px 8px 12px;
+  }
+  .streamlined .shelf {
+    padding: 18px 16px;
+  }
+  .streamlined .notebooks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .streamlined .shelf-heading h2 {
+    font-size: 26px;
+  }
+  .writing-tools {
+    bottom: 22px;
+    border-radius: 18px;
+    gap: 1px;
+    padding: 4px;
+  }
+  .writing-tools button {
+    min-width: 40px;
+    padding: 3px 6px;
+  }
+  .ink-picker {
+    width: 34px;
+  }
+}
+.notebook-mode .excalidraw .layer-ui__wrapper,
+.focus .excalidraw .layer-ui__wrapper {
+  display: none;
+}
+.notebook-mode .excalidraw > .App-top-bar,
+.notebook-mode .excalidraw > .App-bottom-bar,
+.focus .excalidraw > .App-top-bar,
+.focus .excalidraw > .App-bottom-bar {
+  display: none;
+}

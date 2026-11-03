@@ -26,6 +26,7 @@ const newID = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
+type PageTool = "text" | "freedraw" | "selection" | "eraser";
 type Notebook = {
   id: string;
   title: string;
@@ -55,6 +56,11 @@ function App() {
     [cloudEnabled, setCloudEnabled] = useState(false),
     [renderVersion, setRenderVersion] = useState(0),
     [menu, setMenu] = useState(false),
+    [panel, setPanel] = useState<"library" | "note">("library"),
+    [focus, setFocus] = useState(false),
+    [diagram, setDiagram] = useState(false),
+    [tool, setTool] = useState<PageTool>("freedraw"),
+    [ink, setInk] = useState("#343d3a"),
     [query, setQuery] = useState(""),
     [trash, setTrash] = useState(false),
     [favorites, setFavorites] = useState(false),
@@ -467,6 +473,58 @@ function App() {
       native({ type: "ready" });
     }
   }, [loaded, active]);
+  function chooseTool(type: PageTool) {
+    setTool(type);
+    api.current?.setActiveTool({ type, locked: type !== "selection" });
+  }
+  function historyStep(redo = false) {
+    const apple = /Mac|iPhone|iPad/.test(navigator.platform);
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        code: "KeyZ",
+        metaKey: apple,
+        ctrlKey: !apple,
+        shiftKey: redo,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }
+  function noteSettings() {
+    setPanel("note");
+    setMenu(true);
+  }
+  useEffect(() => {
+    const surface = document.querySelector(".page-surface");
+    if (!surface) return;
+    let previousWidth = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const resize = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+      if (previousWidth && Math.abs(width - previousWidth) > 60) {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const editor = api.current;
+          if (
+            editor &&
+            !editor.getAppState().editingTextElement &&
+            editor.getSceneElements().length
+          )
+            editor.scrollToContent(editor.getSceneElements(), {
+              fitToViewport: true,
+              maxZoom: 1,
+            });
+        }, 180);
+      }
+      previousWidth = width;
+    });
+    resize.observe(surface);
+    return () => {
+      resize.disconnect();
+      clearTimeout(timer);
+    };
+  }, []);
   function sample() {
     const els = convertToExcalidrawElements([
       {
@@ -541,6 +599,7 @@ function App() {
     const other = next.find((b) => !b.deletedAt);
     if (other) select(other.id);
     else add();
+    setPanel("library");
     setMenu(true);
   }
   async function exportImage(pdf = false, recognize = false) {
@@ -669,11 +728,21 @@ function App() {
         Number(!!b.favorite) - Number(!!a.favorite) || b.updated - a.updated,
     );
   return (
-    <div className={"shell " + theme}>
+    <div
+      className={
+        "shell streamlined " +
+        theme +
+        (focus ? " focus" : "") +
+        (diagram ? " diagram-mode" : " notebook-mode")
+      }
+    >
       <header>
         <button
           className="brand"
-          onClick={() => setMenu(!menu)}
+          onClick={() => {
+            setPanel("library");
+            setMenu(!(menu && panel === "library"));
+          }}
           aria-label="Open notebooks"
         >
           <img
@@ -681,9 +750,7 @@ function App() {
               theme === "dark" ? "./art/mark-dark.png" : "./art/mark-light.png"
             }
           />
-          <span>
-            Whisketch<small>A little room for big ideas</small>
-          </span>
+          <span>Notebooks</span>
         </button>
         <input
           aria-label="Notebook title"
@@ -692,31 +759,36 @@ function App() {
           onChange={(e) => changeBook({ title: e.target.value })}
         />
         <button
-          className={"star " + (book?.favorite ? "chosen" : "")}
-          aria-label="Favorite notebook"
-          aria-pressed={!!book?.favorite}
-          onClick={() => changeBook({ favorite: !book?.favorite })}
-        >
-          {book?.favorite ? "★" : "☆"}
-        </button>
-        <button
-          aria-label="Toggle appearance"
+          className="focus-toggle"
+          aria-label="Focus on page"
+          title="Focus on page"
           onClick={() => {
-            const next = theme === "dark" ? "light" : "dark";
-            setTheme(next);
-            void set("whisketch-theme-v1", next);
+            setMenu(false);
+            setFocus(true);
           }}
         >
-          {theme === "dark" ? "☀" : "☾"}
+          ⛶
         </button>
         <button
           className="more"
-          onClick={() => setMenu(!menu)}
+          onClick={() => {
+            setPanel("note");
+            setMenu(!(menu && panel === "note"));
+          }}
           aria-label="Notebook actions"
         >
-          ☰
+          ···
         </button>
       </header>
+      {focus && (
+        <button
+          className="restore-controls"
+          aria-label="Show controls"
+          onClick={() => setFocus(false)}
+        >
+          Show controls
+        </button>
+      )}
       {cloudEnabled &&
         ["conflict", "missing", "pending"].includes(cloudState?.state) && (
           <section className="cloud-banner" aria-label="Nextcloud sync">
@@ -742,342 +814,488 @@ function App() {
       {menu && (
         <aside className="shelf">
           <div className="shelf-heading">
-            <img className="library-art" src="./art/library.jpg" alt="" />
             <div>
-              <small className="eyebrow">CATLYTE · YOUR CREATIVE CORNER</small>
-              <h2>Your notebooks</h2>
-              <p>Sketch a thought. Follow a connection. Keep it yours.</p>
+              <h2>{panel === "library" ? "Notebooks" : "Note settings"}</h2>
+              <p>
+                {panel === "library" ? "A place for each idea." : book?.title}
+              </p>
             </div>
             <button onClick={() => setMenu(false)} aria-label="Close notebooks">
               ×
             </button>
           </div>
-          <div className="shelf-tools">
-            <input
-              placeholder="Search titles, tags and words…"
-              aria-label="Find a notebook"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button className="primary" onClick={() => add()}>
-              ＋ New notebook
-            </button>
-            <button onClick={sample}>Try a sample</button>
-          </div>
-          <section className="templates" aria-label="Notebook templates">
-            <h3>A starting point, if you like</h3>
-            <div>
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => add(t.name, makeTemplate(t.id))}
-                  aria-label={"Use " + t.name + " template"}
-                >
-                  <span>{t.mark}</span>
-                  <strong>{t.name}</strong>
-                  <small>{t.hint}</small>
+          {panel === "library" && (
+            <>
+              <div className="shelf-tools">
+                <input
+                  placeholder="Search titles, tags and words…"
+                  aria-label="Find a notebook"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <button className="primary" onClick={() => add()}>
+                  ＋ New notebook
                 </button>
-              ))}
-            </div>
-          </section>
-          <div className="shelf-tabs">
-            <button
-              className={!trash && !favorites ? "selected" : ""}
-              onClick={() => {
-                setTrash(false);
-                setFavorites(false);
-              }}
-            >
-              All notebooks
-            </button>
-            <button
-              className={favorites ? "selected" : ""}
-              onClick={() => {
-                setFavorites(!favorites);
-                setTrash(false);
-              }}
-            >
-              Favorites
-            </button>
-            <button
-              className={trash ? "selected" : ""}
-              onClick={() => {
-                setTrash(!trash);
-                setFavorites(false);
-              }}
-            >
-              Trash
-            </button>
-            <span>
-              {visible.length} {visible.length === 1 ? "notebook" : "notebooks"}
-            </span>
-          </div>
-          <div className="notebooks">
-            {visible.map((b) => (
-              <div key={b.id} className="book-card">
-                <button
-                  className={"book-cover " + (b.id === active ? "active" : "")}
-                  style={
-                    { "--cover": b.cover ?? "#dce9e3" } as React.CSSProperties
-                  }
-                  onClick={() => {
-                    if (!b.deletedAt) select(b.id);
-                  }}
-                  aria-label={
-                    b.title +
-                    " " +
-                    new Date(b.updated).toLocaleDateString() +
-                    " · " +
-                    b.scene.elements.filter(
-                      (e: any) => !e.isDeleted && !e.customData?.whisketchPaper,
-                    ).length +
-                    " objects"
-                  }
-                >
-                  <span className="book-spine" />
-                  <span className="book-emboss">{b.favorite ? "★" : "✧"}</span>
-                  <strong>{b.title || "Untitled"}</strong>
-                  <span className="cover-caption">
-                    {b.scene.whisketch?.paper ?? "Free canvas"} · Whisketch
-                  </span>
-                  <span className="elastic" />
-                </button>
-                <div className="book-details">
-                  <span>
-                    {new Date(b.updated).toLocaleDateString()} ·{" "}
-                    {
-                      b.scene.elements.filter(
-                        (e: any) =>
-                          !e.isDeleted && !e.customData?.whisketchPaper,
-                      ).length
-                    }{" "}
-                    objects
-                  </span>
-                  {b.deletedAt && (
-                    <button
-                      onClick={() =>
-                        void persist(
-                          all.current.map((x) =>
-                            x.id === b.id ? { ...x, deletedAt: undefined } : x,
-                          ),
-                        )
-                      }
-                    >
-                      Restore notebook
-                    </button>
-                  )}
-                </div>
+                <button onClick={sample}>Try a sample</button>
               </div>
-            ))}
-          </div>
-          {visible.length === 0 && (
-            <div className="empty-state">
-              {trash
-                ? "Your deleted notebooks will wait here until you restore them."
-                : "A fresh page is a good place to begin."}
-            </div>
-          )}
-          <section className="notebook-settings">
-            <div>
-              <h3>Make this notebook yours</h3>
-              <p>{book?.title}</p>
-              <label>
-                Paper
-                <div className="paper-options">
-                  {["plain", "lined", "dots", "grid", "midnight"].map((x) => (
+              <details className="template-picker">
+                <summary>Start from a template</summary>
+                <section className="templates" aria-label="Notebook templates">
+                  <div>
+                    {templates.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => add(t.name, makeTemplate(t.id))}
+                        aria-label={"Use " + t.name + " template"}
+                      >
+                        <span>{t.mark}</span>
+                        <strong>{t.name}</strong>
+                        <small>{t.hint}</small>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </details>
+              <div className="shelf-tabs">
+                <button
+                  className={!trash && !favorites ? "selected" : ""}
+                  onClick={() => {
+                    setTrash(false);
+                    setFavorites(false);
+                  }}
+                >
+                  All notebooks
+                </button>
+                <button
+                  className={favorites ? "selected" : ""}
+                  onClick={() => {
+                    setFavorites(!favorites);
+                    setTrash(false);
+                  }}
+                >
+                  Favorites
+                </button>
+                <button
+                  className={trash ? "selected" : ""}
+                  onClick={() => {
+                    setTrash(!trash);
+                    setFavorites(false);
+                  }}
+                >
+                  Trash
+                </button>
+                <span>
+                  {visible.length}{" "}
+                  {visible.length === 1 ? "notebook" : "notebooks"}
+                </span>
+              </div>
+              <div className="notebooks">
+                {visible.map((b) => (
+                  <div key={b.id} className="book-card">
                     <button
-                      key={x}
-                      aria-label={"Use " + x + " paper"}
                       className={
-                        book?.scene.whisketch?.paper === x ? "selected" : ""
+                        "book-cover " + (b.id === active ? "active" : "")
+                      }
+                      style={
+                        {
+                          "--cover": b.cover ?? "#dce9e3",
+                        } as React.CSSProperties
                       }
                       onClick={() => {
-                        paper(x);
-                        setMenu(false);
+                        if (!b.deletedAt) select(b.id);
                       }}
+                      aria-label={
+                        b.title +
+                        " " +
+                        new Date(b.updated).toLocaleDateString() +
+                        " · " +
+                        b.scene.elements.filter(
+                          (e: any) =>
+                            !e.isDeleted && !e.customData?.whisketchPaper,
+                        ).length +
+                        " objects"
+                      }
                     >
-                      {x}
+                      <span className="book-spine" />
+                      <span className="book-emboss">
+                        {b.favorite ? "★" : "✧"}
+                      </span>
+                      <strong>{b.title || "Untitled"}</strong>
+                      <span className="cover-caption">
+                        {b.scene.whisketch?.paper ?? "Free canvas"} · Whisketch
+                      </span>
+                      <span className="elastic" />
                     </button>
-                  ))}
+                    <div className="book-details">
+                      <span>
+                        {new Date(b.updated).toLocaleDateString()} ·{" "}
+                        {
+                          b.scene.elements.filter(
+                            (e: any) =>
+                              !e.isDeleted && !e.customData?.whisketchPaper,
+                          ).length
+                        }{" "}
+                        objects
+                      </span>
+                      {b.deletedAt && (
+                        <button
+                          onClick={() =>
+                            void persist(
+                              all.current.map((x) =>
+                                x.id === b.id
+                                  ? { ...x, deletedAt: undefined }
+                                  : x,
+                              ),
+                            )
+                          }
+                        >
+                          Restore notebook
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {visible.length === 0 && (
+                <div className="empty-state">
+                  {trash
+                    ? "Your deleted notebooks will wait here until you restore them."
+                    : "A fresh page is a good place to begin."}
                 </div>
-              </label>
-              <label>
-                Cover
-                <div className="swatches">
-                  {["#dce9e3", "#e7dff1", "#ecdac8", "#d6e4ef", "#efcfca"].map(
-                    (x, i) => (
+              )}
+              <button className="library-settings-link" onClick={noteSettings}>
+                Selected notebook settings
+              </button>
+            </>
+          )}
+          {panel === "note" && (
+            <section className="notebook-settings">
+              <div>
+                <h3>Page & appearance</h3>
+                <div className="note-preferences">
+                  {" "}
+                  <button
+                    className={"star " + (book?.favorite ? "chosen" : "")}
+                    aria-label="Favorite notebook"
+                    aria-pressed={!!book?.favorite}
+                    onClick={() => changeBook({ favorite: !book?.favorite })}
+                  >
+                    {book?.favorite ? "★" : "☆"}
+                  </button>
+                  <button
+                    aria-label="Toggle appearance"
+                    onClick={() => {
+                      const next = theme === "dark" ? "light" : "dark";
+                      setTheme(next);
+                      void set("whisketch-theme-v1", next);
+                    }}
+                  >
+                    {theme === "dark" ? "☀" : "☾"}
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setDiagram(!diagram);
+                    setMenu(false);
+                  }}
+                >
+                  {diagram ? "Use notebook tools" : "Advanced diagram tools"}
+                </button>
+                <label>
+                  Paper
+                  <div className="paper-options">
+                    {["plain", "lined", "dots", "grid", "midnight"].map((x) => (
+                      <button
+                        key={x}
+                        aria-label={"Use " + x + " paper"}
+                        className={
+                          book?.scene.whisketch?.paper === x ? "selected" : ""
+                        }
+                        onClick={() => {
+                          paper(x);
+                          setMenu(false);
+                        }}
+                      >
+                        {x}
+                      </button>
+                    ))}
+                  </div>
+                </label>
+                <label>
+                  Cover
+                  <div className="swatches">
+                    {[
+                      "#dce9e3",
+                      "#e7dff1",
+                      "#ecdac8",
+                      "#d6e4ef",
+                      "#efcfca",
+                    ].map((x, i) => (
                       <button
                         key={x}
                         style={{ background: x }}
                         aria-label={"Cover color " + (i + 1)}
                         onClick={() => changeBook({ cover: x })}
                       />
-                    ),
-                  )}
-                </div>
-              </label>
-              <label>
-                Tags
-                <input
-                  aria-label="Notebook tags"
-                  placeholder="Ideas, homelab, journal…"
-                  key={active + ":" + renderVersion}
-                  defaultValue={(book?.tags ?? []).join(", ")}
-                  onBlur={(e) =>
-                    changeBook({
-                      tags: e.target.value
-                        .split(",")
-                        .map((x) => x.trim())
-                        .filter(Boolean),
-                    })
-                  }
-                />
-              </label>
-              {!!book?.checkpoints?.length && (
-                <details className="checkpoints">
-                  <summary>
-                    Saved checkpoints ({book.checkpoints.length}/3)
-                  </summary>
-                  <p>
-                    Restore opens a separate notebook so current work stays
-                    safe.
-                  </p>
-                  {book.checkpoints.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() =>
-                        add(v.title + " recovered", structuredClone(v.scene))
-                      }
-                    >
-                      Restore checkpoint {new Date(v.at).toLocaleString()}
-                    </button>
-                  ))}
-                </details>
-              )}
-              <div className="actions">
-                <button onClick={duplicate}>Duplicate notebook</button>
-                <button
-                  onClick={() =>
-                    changeBook({
-                      checkpoints: [
-                        {
-                          id: newID(),
-                          at: Date.now(),
-                          title: book?.title ?? "Untitled",
-                          scene: structuredClone(book?.scene),
-                        },
-                        ...(book?.checkpoints ?? []),
-                      ].slice(0, 3),
-                    })
-                  }
-                >
-                  Save checkpoint
-                </button>
-                <button onClick={removeBook}>Move notebook to Trash</button>
-              </div>
-            </div>
-            <div>
-              <h3>Take your ideas with you</h3>
-              <div className="actions">
-                <label className="fileButton">
-                  Import board, library or backup
+                    ))}
+                  </div>
+                </label>
+                <label>
+                  Tags
                   <input
-                    type="file"
-                    accept=".excalidraw,.whiteboard,.json,.excalidrawlib"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (f) importBoard(await f.text(), f.name);
-                      e.target.value = "";
-                    }}
+                    aria-label="Notebook tags"
+                    placeholder="Ideas, homelab, journal…"
+                    key={active + ":" + renderVersion}
+                    defaultValue={(book?.tags ?? []).join(", ")}
+                    onBlur={(e) =>
+                      changeBook({
+                        tags: e.target.value
+                          .split(",")
+                          .map((x) => x.trim())
+                          .filter(Boolean),
+                      })
+                    }
                   />
                 </label>
-                <button onClick={exportBackup}>Export library backup</button>
-                <button onClick={() => exportBoard()}>
-                  Export editable board
-                </button>
-                <button onClick={() => void exportImage()}>
-                  Export PNG image
-                </button>
-                <button
-                  onClick={() =>
-                    void api.current.updateLibrary({
-                      libraryItems: starterLibrary(),
-                      merge: true,
-                      openLibraryMenu: true,
-                    })
-                  }
-                >
-                  Add Catlyte homelab shapes
-                </button>
-                {window.webkit?.messageHandlers?.whisketch && (
-                  <button onClick={() => void exportImage(true)}>
-                    Export PDF
+                {!!book?.checkpoints?.length && (
+                  <details className="checkpoints">
+                    <summary>
+                      Saved checkpoints ({book.checkpoints.length}/3)
+                    </summary>
+                    <p>
+                      Restore opens a separate notebook so current work stays
+                      safe.
+                    </p>
+                    {book.checkpoints.map((v) => (
+                      <button
+                        key={v.id}
+                        onClick={() =>
+                          add(v.title + " recovered", structuredClone(v.scene))
+                        }
+                      >
+                        Restore checkpoint {new Date(v.at).toLocaleString()}
+                      </button>
+                    ))}
+                  </details>
+                )}
+                <div className="actions">
+                  <button onClick={duplicate}>Duplicate notebook</button>
+                  <button
+                    onClick={() =>
+                      changeBook({
+                        checkpoints: [
+                          {
+                            id: newID(),
+                            at: Date.now(),
+                            title: book?.title ?? "Untitled",
+                            scene: structuredClone(book?.scene),
+                          },
+                          ...(book?.checkpoints ?? []),
+                        ].slice(0, 3),
+                      })
+                    }
+                  >
+                    Save checkpoint
                   </button>
-                )}
-                {window.webkit?.messageHandlers?.whisketch && (
-                  <>
-                    <button onClick={() => void exportImage(false, true)}>
-                      Extract text from selected ink or board
-                    </button>
-                    <button onClick={() => native({ type: "ocr" })}>
-                      Recognize text in a photo
-                    </button>
-                    <button onClick={() => native({ type: "connect" })}>
-                      Nextcloud connection
-                    </button>
-                    <button onClick={() => exportBoard(true)}>
-                      Sync with Nextcloud now
-                    </button>
-                  </>
-                )}
+                  <button onClick={removeBook}>Move notebook to Trash</button>
+                </div>
               </div>
-              <p className="connection-note">
-                Saved locally first. Once connected, notes refresh on opening
-                and sync automatically after edits. Files use the note name with
-                a .whiteboard extension. Offline edits retry on reopening or
-                reconnecting. Conflicting edits require choosing a version; the
-                other version is kept as a checkpoint. Trash stays local.
-              </p>
-              <p className="connection-note">
-                Shape libraries stay on this device across notebooks. Import
-                .excalidrawlib files, or use the editor’s Library button. Retain
-                license notices when sharing third-party assets.
-              </p>
-            </div>
-          </section>
+              <div>
+                <h3>Share & connect</h3>
+                <div className="actions">
+                  <label className="fileButton">
+                    Import board, library or backup
+                    <input
+                      type="file"
+                      accept=".excalidraw,.whiteboard,.json,.excalidrawlib"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (f) importBoard(await f.text(), f.name);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <button onClick={exportBackup}>Export library backup</button>
+                  <button onClick={() => exportBoard()}>
+                    Export editable board
+                  </button>
+                  <button onClick={() => void exportImage()}>
+                    Export PNG image
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDiagram(true);
+                      setMenu(false);
+                      void api.current.updateLibrary({
+                        libraryItems: starterLibrary(),
+                        merge: true,
+                        openLibraryMenu: true,
+                      });
+                    }}
+                  >
+                    Add Catlyte homelab shapes
+                  </button>
+                  {window.webkit?.messageHandlers?.whisketch && (
+                    <button onClick={() => void exportImage(true)}>
+                      Export PDF
+                    </button>
+                  )}
+                  {window.webkit?.messageHandlers?.whisketch && (
+                    <>
+                      <button onClick={() => void exportImage(false, true)}>
+                        Extract text from selected ink or board
+                      </button>
+                      <button onClick={() => native({ type: "ocr" })}>
+                        Recognize text in a photo
+                      </button>
+                      <button onClick={() => native({ type: "connect" })}>
+                        Nextcloud connection
+                      </button>
+                      <button onClick={() => exportBoard(true)}>
+                        Sync with Nextcloud now
+                      </button>
+                    </>
+                  )}
+                </div>
+                <p className="connection-note">
+                  Saved locally first. Once connected, notes refresh on opening
+                  and sync automatically after edits. Files use the note name
+                  with a .whiteboard extension. Offline edits retry on reopening
+                  or reconnecting. Conflicting edits require choosing a version;
+                  the other version is kept as a checkpoint. Trash stays local.
+                </p>
+                <p className="connection-note">
+                  Shape libraries stay on this device across notebooks. Import
+                  .excalidrawlib files, or use the editor’s Library button.
+                  Retain license notices when sharing third-party assets.
+                </p>
+              </div>
+            </section>
+          )}
         </aside>
       )}
       <main>
-        {loaded && book && (
-          <Excalidraw
-            key={active + ":" + renderVersion}
-            excalidrawAPI={(a) => {
-              api.current = a;
-              applyingRemote.current = null;
-            }}
-            initialData={{
-              ...book.scene,
-              elements: restoreElements(book.scene.elements, null),
-              libraryItems: libraries.current,
-              scrollToContent: true,
-            }}
-            onLibraryChange={(items) => {
-              const saved = structuredClone([...items]);
-              queue.current = queue.current
-                .catch(() => {})
-                .then(() => set("whisketch-shapes-v1", saved))
-                .then(() => {
-                  libraries.current = saved;
-                })
-                .catch(() => setNotice("Could not save shape library"));
-            }}
-            onChange={updateScene}
-            theme={theme}
-            name={book.title}
-            UIOptions={{
-              canvasActions: { loadScene: false, saveToActiveFile: false },
-            }}
-          />
+        <div className="page-surface">
+          {loaded && book && (
+            <Excalidraw
+              key={active + ":" + renderVersion}
+              excalidrawAPI={(a) => {
+                api.current = a;
+                applyingRemote.current = null;
+                setTimeout(() => {
+                  if (api.current === a && !diagram) {
+                    a.updateScene({
+                      appState: {
+                        currentItemStrokeColor: ink,
+                        currentItemFontFamily: 2,
+                      },
+                    });
+                    if (a.getSceneElements().length)
+                      a.scrollToContent(a.getSceneElements(), {
+                        fitToViewport: true,
+                        maxZoom: 1,
+                      });
+                    a.setActiveTool({
+                      type: tool,
+                      locked: tool !== "selection",
+                    });
+                  }
+                }, 0);
+              }}
+              initialData={{
+                ...book.scene,
+                elements: restoreElements(book.scene.elements, null),
+                libraryItems: libraries.current,
+                scrollToContent: true,
+              }}
+              onLibraryChange={(items) => {
+                const saved = structuredClone([...items]);
+                queue.current = queue.current
+                  .catch(() => {})
+                  .then(() => set("whisketch-shapes-v1", saved))
+                  .then(() => {
+                    libraries.current = saved;
+                  })
+                  .catch(() => setNotice("Could not save shape library"));
+              }}
+              onChange={(elements, state, files) => {
+                updateScene(elements, state, files);
+                if (
+                  ["freedraw", "text", "selection", "eraser"].includes(
+                    state.activeTool.type,
+                  )
+                )
+                  setTool((previous) =>
+                    previous === state.activeTool.type
+                      ? previous
+                      : (state.activeTool.type as PageTool),
+                  );
+              }}
+              zenModeEnabled={!diagram || focus}
+              handleKeyboardGlobally={true}
+              theme={theme}
+              name={book.title}
+              UIOptions={{
+                canvasActions: { loadScene: false, saveToActiveFile: false },
+              }}
+            />
+          )}
+        </div>
+        {!menu && !focus && !diagram && (
+          <nav className="writing-tools" aria-label="Writing tools">
+            {[
+              ["text", "T", "Write"],
+              ["freedraw", "✎", "Draw"],
+              ["selection", "↖", "Select"],
+              ["eraser", "⌫", "Erase"],
+            ].map(([type, icon, label]) => (
+              <button
+                key={type}
+                aria-label={label}
+                aria-pressed={tool === type}
+                className={tool === type ? "selected" : ""}
+                onClick={() => chooseTool(type as PageTool)}
+              >
+                <span aria-hidden="true">{icon}</span>
+                <small>{label}</small>
+              </button>
+            ))}
+            <label className="ink-picker" title="Ink color">
+              <input
+                aria-label="Ink color"
+                type="color"
+                value={ink}
+                onChange={(event) => {
+                  setInk(event.target.value);
+                  api.current?.updateScene({
+                    appState: { currentItemStrokeColor: event.target.value },
+                  });
+                }}
+              />
+            </label>
+            <button
+              aria-label="Undo"
+              title="Undo"
+              onClick={() => historyStep()}
+            >
+              ↶
+            </button>
+            <button
+              aria-label="Redo"
+              title="Redo"
+              onClick={() => historyStep(true)}
+            >
+              ↷
+            </button>
+          </nav>
+        )}
+        {!menu && !focus && diagram && (
+          <button
+            className="notebook-tools-return"
+            onClick={() => setDiagram(false)}
+          >
+            Use notebook tools
+          </button>
         )}
       </main>
       <footer role="status">

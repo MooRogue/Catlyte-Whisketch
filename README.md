@@ -2,11 +2,13 @@
 
 A Catlyte notebook and whiteboard for handwritten notes, sketches and editable diagrams.
 
-**Status: expanded prototype, 0.3.0 build 5.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
+**Status: expanded prototype, 0.4.0 build 6.** The shared editor runs on the web and is bundled offline in a SwiftUI iPhone/iPad/Mac Catalyst app. The roadmap is larger than this release.
 
-See [0.3 release details](docs/RELEASE-0.3.md) and [Nextcloud automatic sync guide](docs/NEXTCLOUD.md).
+See [0.4 release details](docs/RELEASE-0.4.md) and [Nextcloud automatic sync guide](docs/NEXTCLOUD.md).
 
 ## Available now
+
+- A quiet notebook workspace with compact Write/Draw/Select/Erase tools, ink colour, Undo/Redo and Focus mode. A separate note settings panel keeps sharing, sync, recovery and paper controls available without filling the notebook library. Advanced diagram tools remain available.
 
 - Excalidraw drawing, text, shapes, attached arrows, images and selection tools.
 - A notebook shelf with covers, tags, favourites, content search, templates, Trash recovery, checkpoints and whole-library backups.

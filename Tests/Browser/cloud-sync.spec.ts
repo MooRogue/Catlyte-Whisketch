@@ -178,6 +178,9 @@ test("same-name conflict is visible and choosing remote keeps a recovery checkpo
     page.getByRole("textbox", { name: "Notebook title", exact: true }),
   ).toHaveValue("My first notebook");
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await page
+    .getByRole("button", { name: "Notebook actions", exact: true })
+    .click();
   await expect(page.getByText("Saved checkpoints (1/3)")).toBeVisible();
 });
 
@@ -187,6 +190,9 @@ test("backup restoration creates separate notes without reusing remote links", a
   await page.goto("/");
   await expect(page.getByRole("status")).toContainText("Saved to Nextcloud");
   await page.getByRole("button", { name: "Open notebooks" }).click();
+  await page
+    .getByRole("button", { name: "Notebook actions", exact: true })
+    .click();
   await page.getByRole("button", { name: "Export library backup" }).click();
   const backup = await page.evaluate(
     () => localStorage.getItem("mock-export")!,

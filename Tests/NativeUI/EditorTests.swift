@@ -51,7 +51,11 @@ final class EditorTests: XCTestCase {
     XCTAssertTrue(
       app.navigationBars["Recognized text"].waitForExistence(timeout: 30), app.debugDescription)
     XCTAssertTrue(app.buttons["Insert text"].exists)
-    app.buttons["Cancel"].tap()
+    app.buttons["Insert text"].tap()
+    let review = app.navigationBars["Recognized text"]
+    let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: review)
+    XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 10), .completed)
+    let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; add(shot)
   }
   func testNextcloudFolderIsVisibleWithoutConnecting() {
     let app = XCUIApplication()

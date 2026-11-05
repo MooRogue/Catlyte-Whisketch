@@ -2,7 +2,7 @@
 
 A Catlyte notebook that can also be a whiteboard, for iPhone, iPad, Mac and the web.
 
-**Version 0.5.0 build 8.** See [release and migration details](docs/RELEASE-0.5.md).
+**Version 0.5.1 build 9.** See [paper and OCR fixes](docs/RELEASE-0.5.1.md) and [notebook migration details](docs/RELEASE-0.5.md).
 
 Each notebook has ordered, named pages. A page mixes typed text, Pencil/finger ink, photos, images, shapes and connected arrows. Objects can be selected, moved, resized and rotated. Notebook and whiteboard presentations share the same content. The compact tool shelf includes image import, camera capture, ink colour and undo/redo; the library retains Catlyte's illustrated header, templates, search, tags and favourites. Apple apps provide selected ink/image OCR with reviewed text insertion, PNG export and notebook-wide PDF export.
 

@@ -120,6 +120,7 @@ function App() {
     [focus, setFocus] = useState(false),
     [view, setView] = useState<"notebook" | "whiteboard">("notebook"),
     [pageList, setPageList] = useState(false),
+    [paperPicker, setPaperPicker] = useState(false),
     [penOnly, setPenOnly] = useState(false),
     [cloudDialog, setCloudDialog] = useState(false),
     [webFiles, setWebFiles] = useState<any[]>([]),
@@ -422,7 +423,8 @@ function App() {
       scene: notebookScene(scene, newID()),
       updated: Date.now(),
     };
-    api.current=null;applyingRemote.current=b.id;
+    api.current = null;
+    applyingRemote.current = b.id;
     void persist([b, ...all.current]);
     current.current = b.id;
     void set("whisketch-active-v1", b.id);
@@ -430,7 +432,10 @@ function App() {
     setMenu(false);
   }
   function select(id: string) {
-    if (id !== current.current) { api.current=null;applyingRemote.current=id; }
+    if (id !== current.current) {
+      api.current = null;
+      applyingRemote.current = id;
+    }
     void set("whisketch-active-v1", id);
     current.current = id;
     setActive(id);
@@ -606,16 +611,43 @@ function App() {
       },
       exportDocument: () => exportBoard(),
       insertText: (text: string) => {
-        if (!api.current) return;
+        const editor = api.current;
+        if (!editor || !text.trim()) return { inserted: false };
+        const state = editor.getAppState(),
+          zoom = state.zoom.value;
+        const x = state.width / (2 * zoom) - state.scrollX,
+          y = state.height / (2 * zoom) - state.scrollY;
         const elements = convertToExcalidrawElements([
-          { type: "text", x: 80, y: 80, text, fontSize: 22, fontFamily: 2 },
+          {
+            type: "text",
+            x,
+            y,
+            text,
+            fontSize: 24,
+            fontFamily: 2,
+            strokeColor:
+              all.current.find((b) => b.id === current.current)?.scene.whisketch
+                ?.paper === "midnight"
+                ? "#f5f3ec"
+                : "#243430",
+          },
         ]);
-        api.current.updateScene({
-          elements: [
-            ...api.current.getSceneElementsIncludingDeleted(),
-            ...elements,
-          ],
+        editor.updateScene({
+          elements: [...editor.getSceneElementsIncludingDeleted(), ...elements],
+          appState: {
+            selectedElementIds: Object.fromEntries(
+              elements.map((e: any) => [e.id, true]),
+            ),
+          },
+          captureUpdate: "IMMEDIATELY",
         });
+        editor.scrollToContent(elements, { fitToViewport: true, maxZoom: 1 });
+        editor.setActiveTool({ type: "selection" });
+        setTool("selection");
+        setNotice(
+          "Text inserted and selected. Your original handwriting is unchanged.",
+        );
+        return { inserted: true, id: elements[0].id };
       },
       setNotice: (text: string) => setNotice(text),
     };
@@ -892,24 +924,58 @@ function App() {
         return;
       }
 
+      const editor = api.current;
+      if (!editor) throw new Error("The page is still opening.");
+      const selected = editor.getAppState().selectedElementIds;
+      const all = editor
+        .getSceneElements()
+        .filter((e: any) => !e.customData?.whisketchPaper);
+      let recognitionElements = Object.keys(selected).length
+        ? all.filter((e: any) => selected[e.id])
+        : all;
+      if (recognize && !recognitionElements.length) {
+        setNotice("Select handwriting, text or an image to recognize.");
+        return;
+      }
+      // A selected photo is recognized from its original pixels, avoiding display
+      // filters, zoom and a second rasterization that destroys small lettering.
+      if (
+        recognize &&
+        recognitionElements.length === 1 &&
+        recognitionElements[0].type === "image" &&
+        !recognitionElements[0].crop
+      ) {
+        const file = editor.getFiles()[recognitionElements[0].fileId];
+        if (file) {
+          native({ type: "recognizeBoard", data: file.dataURL });
+          return;
+        }
+      }
+      if (recognize)
+        recognitionElements = recognitionElements.map((e: any) =>
+          e.type === "freedraw" || e.type === "text" || e.type === "line"
+            ? { ...e, strokeColor: "#111111", opacity: 100 }
+            : e,
+        );
       const blob = await exportToBlob({
-        elements:
-          recognize &&
-          Object.keys(api.current.getAppState().selectedElementIds).length
-            ? api.current
-                .getSceneElements()
-                .filter(
-                  (e: any) =>
-                    api.current.getAppState().selectedElementIds[e.id],
-                )
-            : api.current.getSceneElements(),
-        appState: { ...api.current.getAppState(), exportBackground: true },
-        files: api.current.getFiles(),
+        elements: recognize ? recognitionElements : editor.getSceneElements(),
+        appState: {
+          ...editor.getAppState(),
+          theme: "light",
+          exportWithDarkMode: false,
+          exportBackground: true,
+          ...(recognize ? { viewBackgroundColor: "#ffffff" } : {}),
+        },
+        files: editor.getFiles(),
         mimeType: "image/png",
+        exportPadding: recognize ? 32 : 10,
         getDimensions: (w: number, h: number) => ({
           width: w,
           height: h,
-          scale: Math.min(1, 2048 / Math.max(w, h)),
+          scale: Math.min(
+            recognize ? 3 : 1,
+            (recognize ? 4096 : 2048) / Math.max(w, h),
+          ),
         }),
       });
       if (window.webkit?.messageHandlers?.whisketch) {
@@ -939,21 +1005,25 @@ function App() {
   }
   function paper(style: string) {
     if (!api.current || !book) return;
-    const color = style === "midnight" ? "#252c3d" : "#fffdf6";
-    const pattern =
-      style === "lined"
-        ? '<path d="M0 31.5H32" stroke="#b3c3cc" stroke-width="0.6"/>'
-        : style === "grid"
-          ? '<path d="M32 0H0V32" fill="none" stroke="#bdccd1" stroke-width="0.6"/>'
-          : style === "dots"
-            ? '<circle cx="2" cy="2" r="1" fill="#a9b9bf"/>'
-            : "";
-    const svg =
-      '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600"><defs><pattern id="paper" width="32" height="32" patternUnits="userSpaceOnUse">' +
-      pattern +
-      '</pattern></defs><rect width="1200" height="1600" fill="' +
-      color +
-      '"/><rect width="1200" height="1600" fill="url(#paper)"/></svg>';
+    const color =
+      style === "midnight"
+        ? "#252c3d"
+        : style === "yellow"
+          ? "#fff3c7"
+          : "#fffdf6";
+    const size =
+      style === "large-grid" ? 64 : style === "narrow-lined" ? 22 : 32;
+    const pattern = ["lined", "narrow-lined", "yellow", "cornell"].includes(
+      style,
+    )
+      ? `<path d="M0 ${size - 0.5}H${size}" stroke="#b3c3cc" stroke-width="0.7"/>`
+      : ["grid", "large-grid"].includes(style)
+        ? `<path d="M${size} 0H0V${size}" fill="none" stroke="#bdccd1" stroke-width="0.7"/>`
+        : style === "dots"
+          ? '<circle cx="2" cy="2" r="1" fill="#a9b9bf"/>'
+          : "";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600"><defs><pattern id="paper" width="${size}" height="${size}" patternUnits="userSpaceOnUse">${pattern}</pattern></defs><rect width="1200" height="1600" fill="${color}"/><rect width="1200" height="1600" fill="url(#paper)"/>${style === "cornell" ? '<path d="M220 0V1400H1200M0 1400H220" stroke="#d5a2a3" stroke-width="2"/>' : ""}</svg>`;
+    setPaperPicker(false);
     const fileId = newID();
     api.current.addFiles([
       {
@@ -986,7 +1056,25 @@ function App() {
         whisketch: { ...book.scene.whisketch, paper: style },
       },
     };
-    all.current = all.current.map((b) => (b.id === active ? updated : b));
+    updated.scene = snapshot(
+      updated.scene,
+      [...bg, ...prior],
+      {
+        ...api.current.getAppState(),
+        viewBackgroundColor: color,
+        gridModeEnabled: false,
+      },
+      {
+        ...api.current.getFiles(),
+        [fileId]: {
+          id: fileId,
+          mimeType: "image/svg+xml",
+          dataURL: "data:image/svg+xml;base64," + btoa(svg),
+          created: Date.now(),
+        },
+      },
+    );
+    void persist(all.current.map((b) => (b.id === active ? updated : b)));
     api.current.updateScene({
       elements: [...bg, ...prior],
       appState: { viewBackgroundColor: color, gridModeEnabled: false },
@@ -1435,7 +1523,17 @@ function App() {
                 <label>
                   Paper
                   <div className="paper-options">
-                    {["plain", "lined", "dots", "grid", "midnight"].map((x) => (
+                    {[
+                      "plain",
+                      "lined",
+                      "narrow-lined",
+                      "grid",
+                      "large-grid",
+                      "dots",
+                      "cornell",
+                      "yellow",
+                      "midnight",
+                    ].map((x) => (
                       <button
                         key={x}
                         aria-label={"Use " + x + " paper"}
@@ -1671,6 +1769,13 @@ function App() {
             {view === "notebook" ? "Notebook" : "Whiteboard"}
           </button>
           <button
+            aria-label="Choose paper background"
+            aria-expanded={paperPicker}
+            onClick={() => setPaperPicker(!paperPicker)}
+          >
+            <Icon name="book" /> Paper
+          </button>
+          <button
             aria-label="Pencil only drawing"
             aria-pressed={penOnly}
             title="Pencil only: fingers pan; Pencil draws"
@@ -1679,6 +1784,42 @@ function App() {
             {penOnly ? "Pencil only" : "Finger + Pencil"}
           </button>
         </div>
+      )}
+      {paperPicker && !menu && (
+        <section className="paper-popover" aria-label="Paper backgrounds">
+          <h3>Make this page yours</h3>
+          <div>
+            {[
+              ["plain", "Plain"],
+              ["lined", "Ruled"],
+              ["narrow-lined", "Narrow ruled"],
+              ["grid", "Graph"],
+              ["large-grid", "Large graph"],
+              ["dots", "Dots"],
+              ["cornell", "Cornell"],
+              ["yellow", "Yellow ruled"],
+              ["midnight", "Midnight"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                aria-label={"Choose " + label + " background"}
+                aria-pressed={
+                  (book?.scene.whisketch?.paper ?? "plain") === value
+                }
+                onClick={() => paper(value)}
+              >
+                <span
+                  aria-hidden="true"
+                  className={"paper-preview paper-" + value}
+                />
+                <small>{label}</small>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setPaperPicker(false)}>
+            Close paper picker
+          </button>
+        </section>
       )}
       {pageList && !menu && (
         <nav className="page-list" aria-label="Notebook pages">
@@ -1799,7 +1940,7 @@ function App() {
               }}
               zenModeEnabled={!diagram || focus}
               handleKeyboardGlobally={true}
-              theme={theme}
+              theme="light"
               name={book.title}
               UIOptions={{
                 canvasActions: { loadScene: false, saveToActiveFile: false },

@@ -195,6 +195,19 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
     else { return }
     web?.evaluateJavaScript("window.Whisketch && window.Whisketch.\(name)(...\(json))")
   }
+  func insertRecognizedText(_ text: String, completion: @escaping (String?) -> Void) {
+    guard let web, let data = try? JSONSerialization.data(withJSONObject: [text]),
+      let json = String(data: data, encoding: .utf8) else {
+      completion("The page is not ready. Please try again."); return
+    }
+    web.evaluateJavaScript("window.Whisketch && window.Whisketch.insertText(...\(json))") { result, error in
+      DispatchQueue.main.async {
+        if error == nil, let response = result as? [String: Any], response["inserted"] as? Bool == true {
+          completion(nil)
+        } else { completion("Text could not be inserted. Keep this review open and try again when the page is ready.") }
+      }
+    }
+  }
   func importFile(_ url: URL) {
     Task { @MainActor in
       let scoped = url.startAccessingSecurityScopedResource()
@@ -440,6 +453,8 @@ struct RecognitionSheet: View {
   @ObservedObject var bridge: Bridge
   @Environment(\.dismiss) var dismiss
   @State var text: String
+  @State private var inserting = false
+  @State private var insertionError: String?
   init(bridge: Bridge, text: String) {
     self.bridge = bridge
     self._text = State(initialValue: text)
@@ -452,13 +467,17 @@ struct RecognitionSheet: View {
         ).font(.callout).foregroundStyle(.secondary)
         TextEditor(text: $text).font(.body).padding(8).background(.thinMaterial).clipShape(
           RoundedRectangle(cornerRadius: 14))
+        if let insertionError { Text(insertionError).foregroundStyle(.red).font(.callout) }
       }.padding().navigationTitle("Recognized text").toolbar {
         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
         ToolbarItem(placement: .confirmationAction) {
           Button("Insert text") {
-            bridge.call("insertText", [text])
-            dismiss()
-          }.disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            inserting = true; insertionError = nil
+            bridge.insertRecognizedText(text) { error in
+              inserting = false
+              if let error { insertionError = error } else { dismiss() }
+            }
+          }.disabled(inserting || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
       }
     }

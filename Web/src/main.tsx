@@ -1,3 +1,9 @@
+import {
+  presentScene,
+  canonicalScene,
+  inkForPaper,
+  paperIsDark,
+} from "./appearance.mjs";
 import { BrowserCloud } from "./webdav.mjs";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
@@ -135,6 +141,7 @@ function App() {
     [theme, setTheme] = useState<"light" | "dark">(
       matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
     );
+  const appearance = useRef<any>(null);
   const webCloud = useRef<any>(null);
   const api = useRef<any>(null),
     all = useRef<Notebook[]>([]),
@@ -333,7 +340,7 @@ function App() {
   }
   useEffect(() => {
     if (loaded) scheduleSync(active, 0);
-  }, [loaded, active]);
+  }, [loaded, active, ink]);
   useEffect(() => {
     const foreground = () => {
       if (!document.hidden) syncOpenedAndLinked();
@@ -402,7 +409,20 @@ function App() {
   function updateScene(elements: any, appState: any, files: any) {
     const b = all.current.find((b) => b.id === active);
     if (!b || applyingRemote.current === b.id) return;
-    const scene = snapshot(b.scene, elements, appState, files);
+    const canonical = canonicalScene(
+      elements,
+      files,
+      appState,
+      appearance.current,
+      b.scene,
+      ink,
+    );
+    const scene = snapshot(
+      b.scene,
+      canonical.elements,
+      canonical.appState,
+      canonical.files,
+    );
     if (JSON.stringify(scene) === JSON.stringify(b.scene)) return;
     latest.current = scene;
     const next = all.current.map((x) =>
@@ -625,11 +645,7 @@ function App() {
             text,
             fontSize: 24,
             fontFamily: 2,
-            strokeColor:
-              all.current.find((b) => b.id === current.current)?.scene.whisketch
-                ?.paper === "midnight"
-                ? "#f5f3ec"
-                : "#243430",
+            strokeColor: inkForPaper(ink, appearance.current?.dark ?? false),
           },
         ]);
         editor.updateScene({
@@ -655,7 +671,7 @@ function App() {
       nativeSeen.current = true;
       native({ type: "ready" });
     }
-  }, [loaded, active]);
+  }, [loaded, active, ink]);
   function chooseTool(type: PageTool) {
     setTool(type);
     api.current?.setActiveTool({ type, locked: type !== "selection" });
@@ -757,17 +773,22 @@ function App() {
   const book = books.find((x) => x.id === active);
   const cloudState = cloudStates[active];
   const pages = book ? capturePage(book.scene).pages : [];
+  function readScene(b: Notebook) {
+    if (!api.current) return b.scene;
+    const c = canonicalScene(
+      api.current.getSceneElementsIncludingDeleted(),
+      api.current.getFiles(),
+      api.current.getAppState(),
+      appearance.current,
+      b.scene,
+      ink,
+    );
+    return snapshot(b.scene, c.elements, c.appState, c.files);
+  }
   function showPage(id: string) {
     const b = all.current.find((b) => b.id === current.current);
     if (!b) return;
-    const fresh = api.current
-      ? snapshot(
-          b.scene,
-          api.current.getSceneElementsIncludingDeleted(),
-          api.current.getAppState(),
-          api.current.getFiles(),
-        )
-      : b.scene;
+    const fresh = readScene(b);
     const scene = pageScene(fresh, id);
     applyingRemote.current = b.id;
     api.current = null;
@@ -780,14 +801,7 @@ function App() {
   }
   function addPage() {
     if (!book) return;
-    const fresh = api.current
-      ? snapshot(
-          book.scene,
-          api.current.getSceneElementsIncludingDeleted(),
-          api.current.getAppState(),
-          api.current.getFiles(),
-        )
-      : book.scene;
+    const fresh = readScene(book);
     const scene = capturePage(fresh),
       id = newID();
     scene.pages = [
@@ -891,7 +905,18 @@ function App() {
         const document = capturePage(book.scene),
           images: string[] = [];
         for (const page of document.pages) {
-          const elements = restoreElements(page.elements, null);
+          const presented = presentScene(
+            {
+              ...book.scene,
+              elements: page.elements,
+              files: page.files,
+              appState: page.appState,
+              whisketch: { paper: page.paper, paperTone: page.paperTone },
+            },
+            theme,
+            page.paperTone ?? "auto",
+          );
+          const elements = restoreElements(presented.elements, null);
           let data: string;
           if (!elements.some((e: any) => !e.isDeleted)) {
             const canvas = blankPagePreview();
@@ -899,8 +924,13 @@ function App() {
           } else {
             const blob = await exportToBlob({
               elements,
-              appState: { ...page.appState, exportBackground: true },
-              files: page.files,
+              appState: {
+                ...presented.appState,
+                theme: "light",
+                exportWithDarkMode: false,
+                exportBackground: true,
+              },
+              files: presented.files,
               mimeType: "image/png",
               getDimensions: (w: number, h: number) => ({
                 width: w,
@@ -1003,6 +1033,48 @@ function App() {
       setNotice("Could not export this drawing as an image");
     }
   }
+  function applyAppearance(editor = api.current) {
+    const b = all.current.find((b) => b.id === current.current);
+    if (!editor || !b) return;
+    const p = presentScene(
+      b.scene,
+      theme,
+      b.scene.whisketch?.paperTone ?? "auto",
+      editor.getSceneElementsIncludingDeleted(),
+    );
+    appearance.current = p;
+    const existingFiles = editor.getFiles();
+    const missing = Object.values(p.files).filter(
+      (f: any) => !existingFiles[f.id],
+    );
+    if (missing.length) editor.addFiles(missing as any);
+    editor.updateScene({
+      elements: p.elements,
+      appState: {
+        viewBackgroundColor: p.background,
+        currentItemStrokeColor: inkForPaper(ink, p.dark),
+      },
+      captureUpdate: "NEVER",
+    });
+  }
+  useEffect(() => {
+    applyAppearance();
+    native({ type: "appearance", value: theme });
+  }, [
+    theme,
+    book?.scene.activePage,
+    book?.scene.whisketch?.paper,
+    book?.scene.whisketch?.paperTone,
+  ]);
+  function setPaperTone(tone: string) {
+    const b = all.current.find((b) => b.id === current.current);
+    if (!b) return;
+    const scene = {
+      ...b.scene,
+      whisketch: { ...b.scene.whisketch, paperTone: tone },
+    };
+    void persist(all.current.map((x) => (x.id === b.id ? { ...x, scene } : x)));
+  }
   function paper(style: string) {
     if (!api.current || !book) return;
     const color =
@@ -1046,14 +1118,15 @@ function App() {
         customData: { whisketchPaper: true },
       } as any,
     ]);
-    const prior = api.current
-      .getSceneElementsIncludingDeleted()
-      .filter((e: any) => !e.customData?.whisketchPaper);
+    const canonicalBase = readScene(book);
+    const prior = canonicalBase.elements.filter(
+      (e: any) => !e.customData?.whisketchPaper,
+    );
     const updated = {
       ...book,
       scene: {
-        ...book.scene,
-        whisketch: { ...book.scene.whisketch, paper: style },
+        ...canonicalBase,
+        whisketch: { ...canonicalBase.whisketch, paper: style },
       },
     };
     updated.scene = snapshot(
@@ -1065,7 +1138,7 @@ function App() {
         gridModeEnabled: false,
       },
       {
-        ...api.current.getFiles(),
+        ...canonicalBase.files,
         [fileId]: {
           id: fileId,
           mimeType: "image/svg+xml",
@@ -1769,6 +1842,18 @@ function App() {
             {view === "notebook" ? "Notebook" : "Whiteboard"}
           </button>
           <button
+            aria-label="Toggle app appearance"
+            title="Toggle light and dark appearance"
+            aria-pressed={theme === "dark"}
+            onClick={() => {
+              const next = theme === "dark" ? "light" : "dark";
+              setTheme(next);
+              void set("whisketch-theme-v1", next);
+            }}
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          <button
             aria-label="Choose paper background"
             aria-expanded={paperPicker}
             onClick={() => setPaperPicker(!paperPicker)}
@@ -1788,6 +1873,25 @@ function App() {
       {paperPicker && !menu && (
         <section className="paper-popover" aria-label="Paper backgrounds">
           <h3>Make this page yours</h3>
+          <fieldset className="paper-tones">
+            <legend>Paper appearance</legend>
+            {[
+              ["auto", "Follow app"],
+              ["light", "Light"],
+              ["dark", "Dark"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                aria-label={"Paper appearance " + label}
+                aria-pressed={
+                  (book?.scene.whisketch?.paperTone ?? "auto") === value
+                }
+                onClick={() => setPaperTone(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </fieldset>
           <div>
             {[
               ["plain", "Plain"],
@@ -1810,7 +1914,17 @@ function App() {
               >
                 <span
                   aria-hidden="true"
-                  className={"paper-preview paper-" + value}
+                  className={
+                    "paper-preview paper-" +
+                    value +
+                    (paperIsDark(
+                      theme,
+                      book?.scene.whisketch?.paperTone ?? "auto",
+                      book?.scene.whisketch?.paper,
+                    )
+                      ? " paper-preview-dark"
+                      : "")
+                  }
                 />
                 <small>{label}</small>
               </button>
@@ -1877,11 +1991,15 @@ function App() {
               excalidrawAPI={(a) => {
                 api.current = a;
                 applyingRemote.current = null;
+                applyAppearance(a);
                 setTimeout(() => {
                   if (api.current === a && !diagram) {
                     a.updateScene({
                       appState: {
-                        currentItemStrokeColor: ink,
+                        currentItemStrokeColor: inkForPaper(
+                          ink,
+                          appearance.current?.dark ?? false,
+                        ),
                         currentItemFontFamily: 2,
                       },
                     });
@@ -2012,11 +2130,23 @@ function App() {
               <input
                 aria-label="Ink color"
                 type="color"
-                value={ink}
+                value={inkForPaper(
+                  ink,
+                  paperIsDark(
+                    theme,
+                    book?.scene.whisketch?.paperTone ?? "auto",
+                    book?.scene.whisketch?.paper,
+                  ),
+                )}
                 onChange={(event) => {
                   setInk(event.target.value);
                   api.current?.updateScene({
-                    appState: { currentItemStrokeColor: event.target.value },
+                    appState: {
+                      currentItemStrokeColor: inkForPaper(
+                        event.target.value,
+                        appearance.current?.dark ?? false,
+                      ),
+                    },
                   });
                 }}
               />

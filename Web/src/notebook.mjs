@@ -12,6 +12,7 @@ export function notebookScene(scene, id = "page-1") {
         files: scene.files ?? {},
         appState: scene.appState ?? {},
         paper: scene.whisketch?.paper ?? "plain",
+        paperTone: scene.whisketch?.paperTone ?? "auto",
       },
     ],
     activePage: id,
@@ -29,6 +30,7 @@ export function capturePage(scene) {
             files: s.files,
             appState: s.appState,
             paper: s.whisketch?.paper ?? p.paper,
+            paperTone: s.whisketch?.paperTone ?? p.paperTone ?? "auto",
           }
         : p,
     ),
@@ -44,7 +46,11 @@ export function pageScene(scene, id) {
     elements: p.elements,
     files: p.files,
     appState: p.appState,
-    whisketch: { ...s.whisketch, paper: p.paper },
+    whisketch: {
+      ...s.whisketch,
+      paper: p.paper,
+      paperTone: p.paperTone ?? "auto",
+    },
   };
 }
 export function notebookFile(scene) {
@@ -77,6 +83,7 @@ export function notebookFile(scene) {
       content: { objects: p.elements, assets: p.files },
       appearance: {
         viewBackgroundColor: p.appState?.viewBackgroundColor ?? "#fffdf7",
+        paperTone: p.paperTone ?? "auto",
       },
     })),
   };
@@ -104,6 +111,7 @@ export function readNotebook(doc) {
       id: p.id,
       title: p.title,
       paper: p.paper ?? "plain",
+      paperTone: p.appearance?.paperTone ?? "auto",
       elements: p.content.objects,
       files: p.content.assets ?? {},
       appState: p.appearance ?? {},
@@ -119,7 +127,7 @@ export function readNotebook(doc) {
     elements: p.elements,
     files: p.files,
     appState: p.appState,
-    whisketch: { paper: p.paper },
+    whisketch: { paper: p.paper, paperTone: p.paperTone ?? "auto" },
     notebookMetadata: doc.metadata ?? {},
   };
 }

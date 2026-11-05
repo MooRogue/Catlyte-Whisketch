@@ -6,6 +6,7 @@ import WebKit
 
 final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate {
   weak var web: WKWebView?
+  @Published var appearance: ColorScheme?
   @Published var showCloud = false
   @Published var showImport = false
   @Published var exportURL: URL?
@@ -21,6 +22,7 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
     }
     switch type {
     case "error": error = obj["message"] as? String
+    case "appearance": appearance = (obj["value"] as? String) == "dark" ? .dark : .light
     case "ready": sendCloudConfiguration()
     case "cloudRequest": cloudRequest(obj)
     case "connect": showCloud = true
@@ -414,6 +416,7 @@ struct ShareSheet: UIViewControllerRepresentable {
   var body: some Scene {
     WindowGroup {
       Editor(bridge: bridge)
+        .preferredColorScheme(bridge.appearance)
         .onChange(of: scenePhase) { _, phase in
           if phase == .active {
             bridge.sendCloudConfiguration()

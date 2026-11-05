@@ -14,7 +14,13 @@ export function paperIsDark(theme, tone = "auto", style = "plain") {
     (tone === "auto" && (theme === "dark" || style === "midnight"))
   );
 }
-export function presentScene(scene, theme, tone = "auto", live = []) {
+export function presentScene(
+  scene,
+  theme,
+  tone = "auto",
+  live = [],
+  screen = false,
+) {
   const dark = paperIsDark(theme, tone, scene.whisketch?.paper),
     originals = new Map(),
     files = { ...scene.files };
@@ -54,6 +60,7 @@ export function presentScene(scene, theme, tone = "auto", live = []) {
         /* Preserve an unfamiliar legacy attachment unchanged. */
       }
     }
+    if (screen && e.customData?.whisketchPaper) p.opacity = 0;
     const current = live.find((x) => x.id === e.id);
     p.version = Math.max(e.version ?? 1, current?.version ?? 0) + 1;
     originals.set(e.id, {
@@ -66,7 +73,10 @@ export function presentScene(scene, theme, tone = "auto", live = []) {
   return {
     elements,
     files,
-    appState: { ...scene.appState, viewBackgroundColor: bg },
+    appState: {
+      ...scene.appState,
+      viewBackgroundColor: screen ? "transparent" : bg,
+    },
     originals,
     dark,
     background: bg,
@@ -88,6 +98,8 @@ export function canonicalScene(
     if (record) {
       if (e.strokeColor === record.presented.strokeColor)
         p.strokeColor = record.original.strokeColor;
+      if (e.opacity === record.presented.opacity)
+        p.opacity = record.original.opacity;
       if (e.fileId === record.presented.fileId)
         p.fileId = record.original.fileId;
       p.version = Math.max(

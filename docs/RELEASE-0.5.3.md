@@ -1,0 +1,7 @@
+# Whisketch 0.5.3 build 11
+
+Screen paper ruling now uses a separate CSS backdrop. Rules remain one CSS pixel wide, spacing adapts at far zoom-out, and the pattern follows the canvas pan/zoom. Dark rules have higher contrast. The old paper image is suppressed only in screen presentation and restored during canonicalization; exports retain their original SVG paper background. Photos remain unchanged.
+
+For drawn ink, recognition now passes ordered stroke points, pressure and transformed positions to Apple's public PencilKit stroke recognizer on iOS/macOS 27+. Stroke geometry is normalized to a typical handwriting size. If it reports no text or the OS is older, the existing image-OCR fallback is used. Photos continue to use Vision image OCR. Everything runs on-device and results still require review; original ink is never replaced.
+
+This is a recognition-path change, not a verified accuracy claim. The synthetic block-letter fixture produced no text on the Mac stroke engine; the API contract test explicitly records that outcome and does not assert handwriting quality. Real owner handwriting samples are required to assess accuracy. Browser tests verify stroke order/pressure payloads, ruling visibility during zoom/pan, paper tone, photo colors and canonical-document preservation. Device/simulator builds and native recognition/insertion smoke tests remain separate from real-handwriting validation.

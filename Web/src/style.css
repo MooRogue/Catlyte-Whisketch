@@ -1566,3 +1566,13 @@ main {
   background: #263639;
   color: #eef4f0;
 }
+.paper-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  border-radius: inherit;
+}
+.page-surface > .excalidraw {
+  background: transparent !important;
+}

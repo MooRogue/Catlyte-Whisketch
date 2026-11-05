@@ -1,3 +1,4 @@
+import { paperBackdrop, inkPayload } from "./paper-rendering.mjs";
 import {
   presentScene,
   canonicalScene,
@@ -141,6 +142,7 @@ function App() {
     [theme, setTheme] = useState<"light" | "dark">(
       matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
     );
+  const backdrop = useRef<HTMLDivElement>(null);
   const appearance = useRef<any>(null);
   const webCloud = useRef<any>(null);
   const api = useRef<any>(null),
@@ -409,6 +411,7 @@ function App() {
   function updateScene(elements: any, appState: any, files: any) {
     const b = all.current.find((b) => b.id === active);
     if (!b || applyingRemote.current === b.id) return;
+    updatePaperBackdrop(appState);
     const canonical = canonicalScene(
       elements,
       files,
@@ -1018,6 +1021,7 @@ function App() {
                 ? "exportPDF"
                 : "exportImage",
             name: safeName(book?.title ?? "Whisketch"),
+            ...(recognize ? { strokes: inkPayload(recognitionElements) } : {}),
             data: reader.result,
           });
         reader.readAsDataURL(blob);
@@ -1033,6 +1037,21 @@ function App() {
       setNotice("Could not export this drawing as an image");
     }
   }
+  function updatePaperBackdrop(state: any) {
+    const b = all.current.find((b) => b.id === current.current),
+      p = appearance.current;
+    if (!b || !p || !backdrop.current) return;
+    Object.assign(backdrop.current.style, {
+      backgroundColor: p.background,
+      ...paperBackdrop(
+        b.scene.whisketch?.paper ?? "plain",
+        p.dark,
+        state.zoom?.value ?? 1,
+        state.scrollX ?? 0,
+        state.scrollY ?? 0,
+      ),
+    });
+  }
   function applyAppearance(editor = api.current) {
     const b = all.current.find((b) => b.id === current.current);
     if (!editor || !b) return;
@@ -1041,8 +1060,10 @@ function App() {
       theme,
       b.scene.whisketch?.paperTone ?? "auto",
       editor.getSceneElementsIncludingDeleted(),
+      true,
     );
     appearance.current = p;
+    updatePaperBackdrop(editor.getAppState());
     const existingFiles = editor.getFiles();
     const missing = Object.values(p.files).filter(
       (f: any) => !existingFiles[f.id],
@@ -1051,7 +1072,7 @@ function App() {
     editor.updateScene({
       elements: p.elements,
       appState: {
-        viewBackgroundColor: p.background,
+        viewBackgroundColor: p.appState.viewBackgroundColor,
         currentItemStrokeColor: inkForPaper(ink, p.dark),
       },
       captureUpdate: "NEVER",
@@ -1985,6 +2006,7 @@ function App() {
             }
           }}
         >
+          <div className="paper-backdrop" ref={backdrop} aria-hidden="true" />
           {loaded && book && (
             <Excalidraw
               key={active + ":" + renderVersion}

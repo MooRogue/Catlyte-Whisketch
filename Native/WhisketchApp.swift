@@ -33,9 +33,17 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
       else { return }
       Task { @MainActor in
         do {
-          let result = try await Task.detached(priority: .userInitiated) {
-            try PhotoRecognizer.text(in: data)
-          }.value
+          let result: String
+          if let values=obj["strokes"] as? [[String:Any]],!values.isEmpty,
+            let payload=try? JSONSerialization.data(withJSONObject:values),
+            let strokes=try? JSONDecoder().decode([HandwritingStroke].self,from:payload) {
+            // Ink needs a stroke recognizer, not another screenshot OCR pass.
+            do { result=try await HandwritingRecognizer.text(in:strokes) }
+            catch HandwritingError.empty { result=try PhotoRecognizer.text(in:data) }
+            catch HandwritingError.unavailable { result=try PhotoRecognizer.text(in:data) }
+          } else {
+            result = try await Task.detached(priority: .userInitiated) { try PhotoRecognizer.text(in: data) }.value
+          }
           guard !result.isEmpty else {
             self.error =
               "No text was recognized. Try selecting a smaller area or clearer handwriting."

@@ -13,6 +13,7 @@
 		687317D8335E983F8A0E1A91 /* EditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE26A6676741A78E994A5F30 /* EditorTests.swift */; };
 		6D23EF2540CF17DEDDCDD40E /* PhotoRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */; };
 		96A7867B2A28388DB5E7590A /* Web in Resources */ = {isa = PBXBuildFile; fileRef = 8BF1F5485F8F2C311356B0F0 /* Web */; };
+		B823E261E5EEA7AA75DC90F4 /* HandwritingRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E47857A836D208C076053395 /* HandwritingRecognizer.swift */; };
 		F2061A5FAA84A844E62E46A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F7344E707AEEC8D192CD159B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +35,7 @@
 		D28BA177AD854F94AF7CF0B2 /* Whisketch.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Whisketch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D44D4D8AB55FEDCEF1B915D1 /* NextcloudClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextcloudClient.swift; sourceTree = "<group>"; };
 		D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoRecognizer.swift; sourceTree = "<group>"; };
+		E47857A836D208C076053395 /* HandwritingRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandwritingRecognizer.swift; sourceTree = "<group>"; };
 		EBA7E15F683AE6616F36181C /* WhisketchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisketchApp.swift; sourceTree = "<group>"; };
 		F7344E707AEEC8D192CD159B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -70,6 +72,7 @@
 		E32BE5D8BD8DFA48862F259F /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				E47857A836D208C076053395 /* HandwritingRecognizer.swift */,
 				D44D4D8AB55FEDCEF1B915D1 /* NextcloudClient.swift */,
 				D7B5561E8B75EE00BA6A67A5 /* PhotoRecognizer.swift */,
 			);
@@ -182,6 +185,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2833B9D649BF047632C5A1F8 /* EditorResources.swift in Sources */,
+				B823E261E5EEA7AA75DC90F4 /* HandwritingRecognizer.swift in Sources */,
 				6514F2F756299E2560B9AF32 /* NextcloudClient.swift in Sources */,
 				6D23EF2540CF17DEDDCDD40E /* PhotoRecognizer.swift in Sources */,
 				2B5EFF107409DDCF50262BE4 /* WhisketchApp.swift in Sources */,
@@ -249,7 +253,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = 6PGL458FD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
@@ -264,7 +268,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.2;
+				MARKETING_VERSION = 0.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
 				PRODUCT_NAME = Whisketch;
 				SDKROOT = iphoneos;
@@ -399,7 +403,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = 6PGL458FD6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Whisketch;
@@ -414,7 +418,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.2;
+				MARKETING_VERSION = 0.5.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.catlyte.Whisketch;
 				PRODUCT_NAME = Whisketch;
 				SDKROOT = iphoneos;

@@ -19,11 +19,9 @@ test("app theme changes darken paper and controls without changing notebook cont
   await expect
     .poll(() =>
       page
-        .locator("canvas")
-        .first()
-        .evaluate(
-          (c: HTMLCanvasElement) =>
-            c.getContext("2d")!.getImageData(2, 2, 1, 1).data[0],
+        .locator(".paper-backdrop")
+        .evaluate((e) =>
+          Number(getComputedStyle(e).backgroundColor.match(/\d+/)![0]),
         ),
     )
     .toBeLessThan(80);
@@ -46,11 +44,9 @@ test("app theme changes darken paper and controls without changing notebook cont
   await expect
     .poll(() =>
       page
-        .locator("canvas")
-        .first()
-        .evaluate(
-          (c: HTMLCanvasElement) =>
-            c.getContext("2d")!.getImageData(2, 2, 1, 1).data[0],
+        .locator(".paper-backdrop")
+        .evaluate((e) =>
+          Number(getComputedStyle(e).backgroundColor.match(/\d+/)![0]),
         ),
     )
     .toBeGreaterThan(200);

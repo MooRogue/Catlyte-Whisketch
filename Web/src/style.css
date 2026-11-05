@@ -1576,3 +1576,4 @@ main {
 .page-surface > .excalidraw {
   background: transparent !important;
 }
+.page-surface { position:relative; }

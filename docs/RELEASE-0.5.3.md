@@ -1,4 +1,4 @@
-# Whisketch 0.5.3 build 11
+# Whisketch 0.5.3 build 12
 
 Screen paper ruling now uses a separate CSS backdrop. Rules remain one CSS pixel wide, spacing adapts at far zoom-out, and the pattern follows the canvas pan/zoom. Dark rules have higher contrast. The old paper image is suppressed only in screen presentation and restored during canonicalization; exports retain their original SVG paper background. Photos remain unchanged.
 

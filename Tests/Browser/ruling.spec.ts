@@ -13,6 +13,7 @@ test("dark graph ruling is drawn as a screen-space backdrop and follows zoom wit
   await expect
     .poll(() => bg.evaluate((e) => getComputedStyle(e).backgroundImage))
     .toContain("linear-gradient");
+const frame=await page.locator('.page-surface').boundingBox(),layer=await bg.boundingBox();expect(layer!.x).toBe(frame!.x);expect(layer!.width).toBe(frame!.width);
   const before = await bg.evaluate((e) => getComputedStyle(e).backgroundSize);
   await page.mouse.move(600, 350);
   await page.keyboard.down("Control");

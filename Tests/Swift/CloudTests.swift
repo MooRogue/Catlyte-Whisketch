@@ -50,7 +50,7 @@ final class CloudTests: XCTestCase {
         return (405, Data())
       case 2:
         XCTAssertEqual(r.value(forHTTPHeaderField: "If-None-Match"), "*")
-        XCTAssertTrue(r.url!.path.hasSuffix("/a-b.whiteboard"))
+        XCTAssertTrue(r.url!.path.hasSuffix("/a-b.whisketch"))
         return (201, Data())
       default: return (200, Data(json.utf8))
       }
@@ -124,8 +124,8 @@ final class CloudTests: XCTestCase {
 
   func testStableFileNameWithoutSuffix() throws {
     XCTAssertEqual(
-      try client().fileURL(name: "Meeting notes").lastPathComponent, "Meeting notes.whiteboard")
-    XCTAssertEqual(try client().fileURL(name: "  ").lastPathComponent, "Untitled.whiteboard")
+      try client().fileURL(name: "Meeting notes").lastPathComponent, "Meeting notes.whisketch")
+    XCTAssertEqual(try client().fileURL(name: "  ").lastPathComponent, "Untitled.whisketch")
   }
   func testUpdatesRequireExactETagAndVerifyRevision() async throws {
     var steps: [String] = []

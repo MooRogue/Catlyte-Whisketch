@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
                       scope +
                       "/" +
                       encodeURIComponent(m.name.trim() || "Untitled") +
-                      ".whiteboard",
+                      ".whisketch",
                   };
                 if (m.operation === "read") response.result = doc ?? null;
                 if (m.operation === "write") {
@@ -90,7 +90,7 @@ test("automatic opening/editing sync, plain name, rename, offline retry and refr
       ),
     )
     .toEqual([
-      "https://cloud.example/remote.php/dav/files/alice/Whisketch/Meeting%20notes.whiteboard",
+      "https://cloud.example/remote.php/dav/files/alice/Whisketch/Meeting%20notes.whisketch",
     ]);
   await page.evaluate(() => localStorage.setItem("mock-offline", "1"));
   await page.evaluate(() => window.Whisketch.insertText("Offline idea"));
@@ -117,9 +117,9 @@ test("automatic opening/editing sync, plain name, rename, offline retry and refr
     const data = JSON.parse(localStorage.getItem("mock-dav")!);
     const doc: any = Object.values(data)[0];
     const scene = JSON.parse(doc.json);
-    scene.elements[0].text = "Changed in Nextcloud";
-    scene.elements[0].originalText = "Changed in Nextcloud";
-    scene.elements[0].version += 1;
+    scene.pages[0].content.objects[0].text = "Changed in Nextcloud";
+    scene.pages[0].content.objects[0].originalText = "Changed in Nextcloud";
+    scene.pages[0].content.objects[0].version += 1;
     doc.json = JSON.stringify(scene);
     doc.etag = '"remote-update"';
     localStorage.setItem("mock-dav", JSON.stringify(data));
@@ -148,7 +148,7 @@ test("same-name conflict is visible and choosing remote keeps a recovery checkpo
   await page.evaluate(() => {
     const data = JSON.parse(localStorage.getItem("mock-dav")!);
     const url =
-      "https://cloud.example/remote.php/dav/files/alice/Whisketch/Existing.whiteboard";
+      "https://cloud.example/remote.php/dav/files/alice/Whisketch/Existing.whisketch";
     data[url] = {
       url,
       json: JSON.stringify({

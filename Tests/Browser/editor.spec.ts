@@ -1,3 +1,4 @@
+import { parseBoard } from "../../Web/src/document.mjs";
 import { test, expect, type Page } from "@playwright/test";
 async function noteActions(page: Page) {
   if (!(await page.locator(".notebook-settings").isVisible()))
@@ -78,10 +79,10 @@ test("draw, persist across reload, export and reimport without losing images or 
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const downloadPromise = page.waitForEvent("download");
   await noteActions(page);
-  await page.getByRole("button", { name: "Export editable board" }).click();
+  await page.getByRole("button", { name: "Export notebook file" }).click();
   const download = await downloadPromise;
   const fs = await import("node:fs/promises");
-  const output = JSON.parse(
+  const output = parseBoard(
     await fs.readFile((await download.path())!, "utf8"),
   );
   expect(output.vendor).toEqual({ preserve: "yes" });
@@ -112,10 +113,10 @@ test("image attachment remains editable and survives reopening", async ({
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const promise = page.waitForEvent("download");
   await noteActions(page);
-  await page.getByRole("button", { name: "Export editable board" }).click();
+  await page.getByRole("button", { name: "Export notebook file" }).click();
   const d = await promise;
   const fs = await import("node:fs/promises");
-  const o = JSON.parse(await fs.readFile((await d.path())!, "utf8"));
+  const o = parseBoard(await fs.readFile((await d.path())!, "utf8"));
   expect(o.elements.some((e: any) => e.type === "image")).toBeTruthy();
   expect(Object.keys(o.files)).toHaveLength(1);
   expect(o.elements.some((e: any) => e.text === "Captured words")).toBeTruthy();
@@ -153,10 +154,10 @@ test("pointer drawing creates editable ink objects", async ({ page }) => {
   await page.getByRole("button", { name: "Open notebooks" }).click();
   const promise = page.waitForEvent("download");
   await noteActions(page);
-  await page.getByRole("button", { name: "Export editable board" }).click();
+  await page.getByRole("button", { name: "Export notebook file" }).click();
   const d = await promise;
   const fs = await import("node:fs/promises");
-  const scene = JSON.parse(await fs.readFile((await d.path())!, "utf8"));
+  const scene = parseBoard(await fs.readFile((await d.path())!, "utf8"));
   const stroke = scene.elements.find((e: any) => e.type === "freedraw");
   expect(stroke).toBeTruthy();
   expect(stroke.points.length).toBeGreaterThan(3);
@@ -218,10 +219,10 @@ test("paper backgrounds survive editable export and PNG rendering", async ({
   const d = page.waitForEvent("download");
   await noteActions(page);
   await page
-    .getByRole("button", { name: "Export editable board", exact: true })
+    .getByRole("button", { name: "Export notebook file", exact: true })
     .click();
   const fs = await import("node:fs/promises");
-  const scene = JSON.parse(
+  const scene = parseBoard(
     await fs.readFile((await (await d).path())!, "utf8"),
   );
   expect(scene.whisketch.paper).toBe("grid");

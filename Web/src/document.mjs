@@ -1,5 +1,15 @@
+import { readNotebook, capturePage } from "./notebook.mjs";
 export function parseBoard(value) {
-  const doc = typeof value === "string" ? JSON.parse(value) : value;
+  let doc = typeof value === "string" ? JSON.parse(value) : value;
+  if (doc?.type === "whisketch-notebook") doc = readNotebook(doc);
+  if (doc?.pages) {
+    for (const p of doc.pages)
+      parseBoard({
+        elements: p.elements,
+        files: p.files,
+        appState: p.appState,
+      });
+  }
   if (!doc || typeof doc !== "object" || !Array.isArray(doc.elements))
     throw new Error("This file does not contain an editable board.");
   if (doc.elements.length > 100000)
@@ -35,7 +45,7 @@ export function snapshot(previous, elements, appState, files) {
     scrollX,
     scrollY,
   } = appState;
-  return {
+  const result = {
     ...previous,
     type: previous.type ?? "excalidraw",
     version: previous.version ?? 2,
@@ -52,6 +62,7 @@ export function snapshot(previous, elements, appState, files) {
     },
     files,
   };
+  return previous.pages ? capturePage(result) : result;
 }
 export function safeName(name) {
   return (

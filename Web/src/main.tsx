@@ -1,3 +1,4 @@
+import { BrowserCloud } from "./webdav.mjs";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -10,6 +11,12 @@ import "@excalidraw/excalidraw/index.css";
 import { get, set } from "idb-keyval";
 import { parseBoard, parseBackup, snapshot, safeName } from "./document.mjs";
 import "./style.css";
+import {
+  notebookScene,
+  capturePage,
+  pageScene,
+  notebookFile,
+} from "./notebook.mjs";
 import { CloudSync, contentKey } from "./cloud-sync.mjs";
 import { templates, makeTemplate, starterLibrary } from "./templates";
 
@@ -26,12 +33,21 @@ const newID = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
-type PageTool = "text" | "freedraw" | "selection" | "eraser";
+type PageTool =
+  | "text"
+  | "freedraw"
+  | "selection"
+  | "eraser"
+  | "arrow"
+  | "line"
+  | "rectangle"
+  | "ellipse";
 type Notebook = {
   id: string;
   title: string;
   updated: number;
   scene: any;
+  pageId?: string;
   favorite?: boolean;
   deletedAt?: number;
   tags?: string[];
@@ -51,6 +67,10 @@ const blank = (): any => ({
 // Original, shared line icons keep the tool shelf consistent at every size.
 function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
+    arrow: "M4 20 20 4M9 4h11v11",
+    rectangle: "M4 4h16v16H4z",
+    line: "M4 20 20 4",
+    ellipse: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18",
     text: "M5 5h14M12 5v14M8 19h8",
     freedraw: "m5 17-1 4 4-1L20 8l-4-4L5 17Zm9-11 4 4M5 17l3 3",
     selection: "m5 3 14 10-7 1-3 7-4-18Z",
@@ -98,6 +118,12 @@ function App() {
     [menu, setMenu] = useState(false),
     [panel, setPanel] = useState<"library" | "note">("library"),
     [focus, setFocus] = useState(false),
+    [view, setView] = useState<"notebook" | "whiteboard">("notebook"),
+    [pageList, setPageList] = useState(false),
+    [penOnly, setPenOnly] = useState(false),
+    [cloudDialog, setCloudDialog] = useState(false),
+    [webFiles, setWebFiles] = useState<any[]>([]),
+    [connectionStatus, setConnectionStatus] = useState(""),
     [diagram, setDiagram] = useState(false),
     [tool, setTool] = useState<PageTool>("freedraw"),
     [ink, setInk] = useState("#343d3a"),
@@ -108,6 +134,7 @@ function App() {
     [theme, setTheme] = useState<"light" | "dark">(
       matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
     );
+  const webCloud = useRef<any>(null);
   const api = useRef<any>(null),
     all = useRef<Notebook[]>([]),
     current = useRef(""),
@@ -139,6 +166,17 @@ function App() {
   }
   async function cloudRequest(operation: string, args: any): Promise<any> {
     await queue.current;
+    if (!window.webkit?.messageHandlers?.whisketch) {
+      if (!localSaveHealthy.current)
+        throw new Error("Local saving failed. Export a copy before syncing.");
+      if (!webCloud.current) throw new Error("Connect to Nextcloud first.");
+      if (operation === "write")
+        args = {
+          ...args,
+          json: JSON.stringify(notebookFile(parseBoard(args.json))),
+        };
+      return webCloud.current.operation(operation, args);
+    }
     return new Promise((resolve, reject) => {
       if (!localSaveHealthy.current) {
         reject(
@@ -158,10 +196,27 @@ function App() {
         );
       }, 90000);
       cloudRequests.current.set(requestID, { resolve, reject, timer });
+      if (operation === "write")
+        args = {
+          ...args,
+          json: JSON.stringify(notebookFile(parseBoard(args.json))),
+        };
       native({ type: "cloudRequest", requestID, operation, ...args });
     });
   }
   const persist = useCallback((next: Notebook[], sync = true) => {
+    next = next.map((b) => {
+      const metadata = {
+        title: b.title,
+        tags: b.tags ?? [],
+        cover: b.cover,
+        favorite: !!b.favorite,
+      };
+      return JSON.stringify(b.scene.notebookMetadata) ===
+        JSON.stringify(metadata)
+        ? b
+        : { ...b, scene: { ...b.scene, notebookMetadata: metadata } };
+    });
     const changed = sync
       ? next
           .filter((b) => {
@@ -183,7 +238,11 @@ function App() {
     all.current = next;
     setBooks(next);
     setNotice("Saving on this device…");
-    const payload = structuredClone(next);
+    const payload = structuredClone(next).map((b) => ({
+      ...b,
+      scene: notebookFile(b.scene),
+      pageId: b.scene.activePage,
+    }));
     queue.current = queue.current
       .catch(() => {})
       .then(() => set("whisketch-library-v1", payload))
@@ -208,7 +267,11 @@ function App() {
           setRenderVersion((v) => v + 1);
         }
         return persist(
-          all.current.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+          all.current.map((b) =>
+            b.id === id
+              ? { ...b, ...(patch.scene?.notebookMetadata ?? {}), ...patch }
+              : b,
+          ),
           false,
         ).then(() => {
           if (!localSaveHealthy.current)
@@ -221,6 +284,10 @@ function App() {
       notify: (id: string, state: any) =>
         setCloudStates((states) => ({ ...states, [id]: state })),
     });
+  function openConnection() {
+    if (window.webkit?.messageHandlers?.whisketch) native({ type: "connect" });
+    else setCloudDialog(true);
+  }
   function configureCloud(json: string) {
     const configuration = JSON.parse(json);
     const scope = configuration?.scope ?? null;
@@ -246,7 +313,14 @@ function App() {
       return;
     }
     const scene = parseBoard(json);
-    add(name.replace(/\.(whiteboard|excalidraw)$/i, ""), scene, {
+    if (!url.endsWith(".whisketch")) {
+      add(name.replace(/\.(whiteboard|excalidraw)$/i, ""), scene);
+      setNotice(
+        "Imported into Whisketch. The original cloud file is unchanged.",
+      );
+      return;
+    }
+    add(name.replace(/\.(whisketch|whiteboard|excalidraw)$/i, ""), scene, {
       cloud: {
         scope,
         url,
@@ -279,7 +353,21 @@ function App() {
       get<string>("whisketch-active-v1"),
       get<string>("whisketch-theme-v1"),
     ])
-      .then(([data, shapes, selected, appearance]) => {
+      .then(async ([data, shapes, selected, appearance]) => {
+        if (data?.length && !(await get("whisketch-before-notebooks-v2")))
+          await set("whisketch-before-notebooks-v2", structuredClone(data));
+        data = data?.map((b) => ({
+          ...b,
+          scene: (() => {
+            const n = notebookScene(parseBoard(b.scene), "page-" + b.id);
+            return b.pageId && n.pages.some((p: any) => p.id === b.pageId)
+              ? pageScene(n, b.pageId)
+              : n;
+          })(),
+          ...(b.cloud?.url && !b.cloud.url.endsWith(".whisketch")
+            ? { legacyCloud: b.cloud, cloud: undefined }
+            : {}),
+        }));
         if (appearance === "light" || appearance === "dark")
           setTheme(appearance);
         libraries.current = shapes ?? [];
@@ -290,7 +378,7 @@ function App() {
                 id: newID(),
                 title: "My first notebook",
                 updated: Date.now(),
-                scene: blank(),
+                scene: notebookScene(blank(), newID()),
               },
             ];
         all.current = docs;
@@ -326,7 +414,15 @@ function App() {
     scene = blank(),
     extra: Partial<Notebook> = {},
   ) {
-    const b = { ...extra, id: newID(), title, scene, updated: Date.now() };
+    const b = {
+      ...(scene.notebookMetadata ?? {}),
+      ...extra,
+      id: newID(),
+      title,
+      scene: notebookScene(scene, newID()),
+      updated: Date.now(),
+    };
+    api.current=null;applyingRemote.current=b.id;
     void persist([b, ...all.current]);
     current.current = b.id;
     void set("whisketch-active-v1", b.id);
@@ -334,6 +430,7 @@ function App() {
     setMenu(false);
   }
   function select(id: string) {
+    if (id !== current.current) { api.current=null;applyingRemote.current=id; }
     void set("whisketch-active-v1", id);
     current.current = id;
     setActive(id);
@@ -345,10 +442,10 @@ function App() {
     if (!b) return;
     if (publish) {
       if (cloudConfiguration.current) scheduleSync(b.id, 0);
-      else native({ type: "connect" });
+      else openConnection();
       return;
     }
-    const data = JSON.stringify(b.scene, null, 2);
+    const data = JSON.stringify(notebookFile(b.scene), null, 2);
     if (window.webkit?.messageHandlers?.whisketch) {
       native({
         type: publish ? "publish" : "export",
@@ -362,7 +459,7 @@ function App() {
     );
     const a = document.createElement("a");
     a.href = u;
-    a.download = safeName(b.title) + ".excalidraw";
+    a.download = safeName(b.title) + ".whisketch";
     a.click();
     setTimeout(() => URL.revokeObjectURL(u), 1000);
   }
@@ -371,7 +468,11 @@ function App() {
       {
         type: "whisketch-backup",
         version: 1,
-        notebooks: all.current,
+        notebooks: all.current.map((b) => ({
+          ...b,
+          scene: notebookFile(b.scene),
+          pageId: b.scene.activePage,
+        })),
         shapeLibrary: libraries.current,
       },
       null,
@@ -423,7 +524,9 @@ function App() {
         return;
       }
       add(
-        safeName(title.replace(/\.(excalidraw|whiteboard|json)$/i, "")),
+        safeName(
+          title.replace(/\.(whisketch|excalidraw|whiteboard|json)$/i, ""),
+        ),
         parseBoard(json),
       );
       setNotice("Imported as a separate local notebook");
@@ -433,8 +536,12 @@ function App() {
   }
   useEffect(() => {
     window.Whisketch = {
-      isReady: () => !!api.current,
+      isReady: () => !!api.current && !applyingRemote.current,
       libraryCount: () => libraries.current.length,
+      notebook: () =>
+        notebookFile(
+          all.current.find((b) => b.id === current.current)?.scene ?? blank(),
+        ),
       configureCloud,
       cloudForeground: syncOpenedAndLinked,
       openCloudDocument,
@@ -475,14 +582,18 @@ function App() {
               fileId: id,
               status: "saved",
             } as any,
-            {
-              type: "text",
-              x: 80,
-              y: 110 + height,
-              text: text || "No text recognized",
-              fontSize: 22,
-              fontFamily: 2,
-            },
+            ...(text
+              ? [
+                  {
+                    type: "text" as const,
+                    x: 80,
+                    y: 110 + height,
+                    text,
+                    fontSize: 22,
+                    fontFamily: 2,
+                  },
+                ]
+              : []),
           ]);
           api.current.updateScene({
             elements: [
@@ -613,6 +724,97 @@ function App() {
   }
   const book = books.find((x) => x.id === active);
   const cloudState = cloudStates[active];
+  const pages = book ? capturePage(book.scene).pages : [];
+  function showPage(id: string) {
+    const b = all.current.find((b) => b.id === current.current);
+    if (!b) return;
+    const fresh = api.current
+      ? snapshot(
+          b.scene,
+          api.current.getSceneElementsIncludingDeleted(),
+          api.current.getAppState(),
+          api.current.getFiles(),
+        )
+      : b.scene;
+    const scene = pageScene(fresh, id);
+    applyingRemote.current = b.id;
+    api.current = null;
+    void persist(
+      all.current.map((x) => (x.id === b.id ? { ...x, scene } : x)),
+      false,
+    );
+    setRenderVersion((v) => v + 1);
+    setPageList(false);
+  }
+  function addPage() {
+    if (!book) return;
+    const fresh = api.current
+      ? snapshot(
+          book.scene,
+          api.current.getSceneElementsIncludingDeleted(),
+          api.current.getAppState(),
+          api.current.getFiles(),
+        )
+      : book.scene;
+    const scene = capturePage(fresh),
+      id = newID();
+    scene.pages = [
+      ...scene.pages,
+      {
+        id,
+        title: "Page " + (scene.pages.length + 1),
+        elements: [],
+        files: {},
+        appState: { viewBackgroundColor: "#fffdf7" },
+        paper: "plain",
+      },
+    ];
+    const next = pageScene(scene, id);
+    applyingRemote.current = book.id;
+    api.current = null;
+    void persist(
+      all.current.map((x) =>
+        x.id === book.id ? { ...x, scene: next, updated: Date.now() } : x,
+      ),
+    );
+    setRenderVersion((v) => v + 1);
+    setPageList(false);
+  }
+  function renamePage(title: string) {
+    if (!book) return;
+    const scene = capturePage(book.scene);
+    scene.pages = scene.pages.map((p: any) =>
+      p.id === scene.activePage ? { ...p, title } : p,
+    );
+    changeBook({ scene });
+  }
+  function reorderPage(offset: number) {
+    if (!book) return;
+    const scene = capturePage(book.scene),
+      i = scene.pages.findIndex((p: any) => p.id === scene.activePage),
+      j = i + offset;
+    if (j < 0 || j >= scene.pages.length) return;
+    [scene.pages[i], scene.pages[j]] = [scene.pages[j], scene.pages[i]];
+    changeBook({ scene });
+  }
+  async function insertImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setNotice("Choose a photo or image file.");
+      return;
+    }
+    if (file.size > 15_000_000) {
+      setNotice("Choose an image smaller than 15 MB.");
+      return;
+    }
+    const data = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    window.Whisketch.insertCapture(data, "");
+  }
+
   async function resolveCloud(choice: string) {
     try {
       await cloudEngine.current.resolve(current.current, choice);
@@ -642,8 +844,54 @@ function App() {
     setPanel("library");
     setMenu(true);
   }
+  function blankPagePreview() {
+    const c = window.document.createElement("canvas");
+    c.width = 595;
+    c.height = 842;
+    const x = c.getContext("2d")!;
+    x.fillStyle = "#fffdf7";
+    x.fillRect(0, 0, 595, 842);
+    return c;
+  }
   async function exportImage(pdf = false, recognize = false) {
     try {
+      if (pdf && window.webkit?.messageHandlers?.whisketch && book) {
+        const document = capturePage(book.scene),
+          images: string[] = [];
+        for (const page of document.pages) {
+          const elements = restoreElements(page.elements, null);
+          let data: string;
+          if (!elements.some((e: any) => !e.isDeleted)) {
+            const canvas = blankPagePreview();
+            data = canvas.toDataURL("image/png");
+          } else {
+            const blob = await exportToBlob({
+              elements,
+              appState: { ...page.appState, exportBackground: true },
+              files: page.files,
+              mimeType: "image/png",
+              getDimensions: (w: number, h: number) => ({
+                width: w,
+                height: h,
+                scale: Math.min(1, 2048 / Math.max(w, h)),
+              }),
+            });
+            data = await new Promise<string>((resolve) => {
+              const r = new FileReader();
+              r.onload = () => resolve(String(r.result));
+              r.readAsDataURL(blob);
+            });
+          }
+          images.push(data);
+        }
+        native({
+          type: "exportNotebookPDF",
+          name: safeName(book.title),
+          pages: images,
+        });
+        return;
+      }
+
       const blob = await exportToBlob({
         elements:
           recognize &&
@@ -755,7 +1003,9 @@ function App() {
         [
           b.title,
           ...(b.tags ?? []),
-          ...b.scene.elements
+          ...(
+            b.scene.pages?.flatMap((p: any) => p.elements) ?? b.scene.elements
+          )
             .filter((e: any) => !e.isDeleted)
             .map((e: any) => e.text ?? e.customData?.recognizedText ?? ""),
         ]
@@ -820,6 +1070,122 @@ function App() {
           ···
         </button>
       </header>
+      {cloudDialog && (
+        <div className="connection-overlay">
+          <section
+            role="dialog"
+            aria-label="Nextcloud connection"
+            aria-modal="true"
+          >
+            <button
+              className="close-connection"
+              aria-label="Close connection"
+              onClick={() => setCloudDialog(false)}
+            >
+              ×
+            </button>
+            <h2>Your notebooks, everywhere</h2>
+            <p>
+              Connect to a folder in your Nextcloud Files. Your app password
+              stays in memory for this browser session.
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                try {
+                  setConnectionStatus("Connecting…");
+                  const c = new BrowserCloud(
+                    String(f.get("server")),
+                    String(f.get("user")),
+                    String(f.get("password")),
+                    String(f.get("folder")),
+                  );
+                  const files = await c.connect();
+                  webCloud.current = c;
+                  setWebFiles(files);
+                  configureCloud(JSON.stringify({ scope: c.scope }));
+                  setConnectionStatus(
+                    "Connected. Opened notebooks sync automatically.",
+                  );
+                } catch (error) {
+                  setConnectionStatus(
+                    (error as Error).message +
+                      " Browser access must be enabled by your Nextcloud administrator.",
+                  );
+                }
+              }}
+            >
+              <label>
+                Nextcloud address
+                <input
+                  name="server"
+                  type="url"
+                  placeholder="https://cloud.example.com"
+                  required
+                />
+              </label>
+              <label>
+                Username
+                <input name="user" autoComplete="username" required />
+              </label>
+              <label>
+                App password
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete="off"
+                  required
+                />
+              </label>
+              <label>
+                Folder
+                <input name="folder" defaultValue="Whisketch" />
+              </label>
+              <button className="primary" type="submit">
+                Connect and sync
+              </button>
+            </form>
+            <p role="status">{connectionStatus}</p>
+            {webFiles.map((f) => (
+              <button
+                key={f.url}
+                onClick={async () => {
+                  try {
+                    const d = await webCloud.current.read(f.url);
+                    if (d) {
+                      openCloudDocument(
+                        d.json,
+                        f.name,
+                        f.url,
+                        d.etag,
+                        webCloud.current.scope,
+                      );
+                      setCloudDialog(false);
+                    }
+                  } catch (e) {
+                    setConnectionStatus((e as Error).message);
+                  }
+                }}
+              >
+                {f.name}
+              </button>
+            ))}
+            {webCloud.current && (
+              <button
+                onClick={() => {
+                  webCloud.current = null;
+                  configureCloud("null");
+                  setWebFiles([]);
+                  setConnectionStatus("Disconnected. Local notes are safe.");
+                }}
+              >
+                Disconnect
+              </button>
+            )}
+          </section>
+        </div>
+      )}
       {focus && (
         <button
           className="restore-controls"
@@ -1181,10 +1547,10 @@ function App() {
                 <div className="actions">
                   <label className="fileButton">
                     <Icon name="book" />
-                    <span>Import board, library or backup</span>
+                    <span>Import notebook or backup</span>
                     <input
                       type="file"
-                      accept=".excalidraw,.whiteboard,.json,.excalidrawlib"
+                      accept=".whisketch,.json,.excalidraw,.whiteboard"
                       onChange={async (e) => {
                         const f = e.target.files?.[0];
                         if (f) importBoard(await f.text(), f.name);
@@ -1198,7 +1564,7 @@ function App() {
                   </button>
                   <button onClick={() => exportBoard()}>
                     <Icon name="export" />
-                    <span>Export editable board</span>
+                    <span>Export notebook file</span>
                   </button>
                   <button onClick={() => void exportImage()}>
                     <Icon name="image" />
@@ -1234,7 +1600,7 @@ function App() {
                         <Icon name="image" />
                         <span>Recognize text in a photo</span>
                       </button>
-                      <button onClick={() => native({ type: "connect" })}>
+                      <button onClick={openConnection}>
                         <Icon name="cloud" />
                         <span>Nextcloud connection</span>
                       </button>
@@ -1245,12 +1611,18 @@ function App() {
                     </>
                   )}
                 </div>
+                {!window.webkit?.messageHandlers?.whisketch && (
+                  <button onClick={openConnection}>
+                    <Icon name="cloud" /> Connect Nextcloud
+                  </button>
+                )}
                 <p className="connection-note">
                   Saved locally first. Once connected, notes refresh on opening
-                  and sync automatically after edits. Files use the note name
-                  with a .whiteboard extension. Offline edits retry on reopening
-                  or reconnecting. Conflicting edits require choosing a version;
-                  the other version is kept as a checkpoint. Trash stays local.
+                  and sync automatically after edits. Files use the notebook
+                  name with a .whisketch extension. Offline edits retry on
+                  reopening or reconnecting. Conflicting edits require choosing
+                  a version; the other version is kept as a checkpoint. Trash
+                  stays local.
                 </p>
                 <p className="connection-note">
                   Shape libraries stay on this device across notebooks. Import
@@ -1262,8 +1634,102 @@ function App() {
           )}
         </aside>
       )}
-      <main>
-        <div className="page-surface">
+      {!menu && !focus && (
+        <div className="page-bar">
+          <button
+            aria-label="Show notebook pages"
+            onClick={() => setPageList(!pageList)}
+          >
+            <Icon name="book" />{" "}
+            <span>
+              Page{" "}
+              {Math.max(
+                0,
+                pages.findIndex((p: any) => p.id === book?.scene.activePage),
+              ) + 1}{" "}
+              / {pages.length}
+            </span>
+          </button>
+          <input
+            aria-label="Page title"
+            value={
+              pages.find((p: any) => p.id === book?.scene.activePage)?.title ??
+              "Page 1"
+            }
+            onChange={(e) => renamePage(e.target.value)}
+          />
+          <button aria-label="Add page" title="Add page" onClick={addPage}>
+            <Icon name="plus" />
+          </button>
+          <button
+            aria-label="Toggle notebook and whiteboard"
+            aria-pressed={view === "whiteboard"}
+            onClick={() =>
+              setView(view === "notebook" ? "whiteboard" : "notebook")
+            }
+          >
+            {view === "notebook" ? "Notebook" : "Whiteboard"}
+          </button>
+          <button
+            aria-label="Pencil only drawing"
+            aria-pressed={penOnly}
+            title="Pencil only: fingers pan; Pencil draws"
+            onClick={() => setPenOnly(!penOnly)}
+          >
+            {penOnly ? "Pencil only" : "Finger + Pencil"}
+          </button>
+        </div>
+      )}
+      {pageList && !menu && (
+        <nav className="page-list" aria-label="Notebook pages">
+          {pages.map((p: any, i: number) => (
+            <button
+              key={p.id}
+              aria-current={
+                p.id === book?.scene.activePage ? "page" : undefined
+              }
+              onClick={() => showPage(p.id)}
+            >
+              <span className="mini-page">{i + 1}</span>
+              <span>{p.title}</span>
+              <small>
+                {
+                  p.elements.filter(
+                    (e: any) => !e.isDeleted && !e.customData?.whisketchPaper,
+                  ).length
+                }{" "}
+                items
+              </small>
+            </button>
+          ))}
+          <div>
+            <button onClick={() => reorderPage(-1)}>Move page earlier</button>
+            <button onClick={() => reorderPage(1)}>Move page later</button>
+          </div>
+        </nav>
+      )}
+      <main
+        className={"mixed-canvas view-" + view}
+        onPointerDownCapture={(e) => {
+          if (penOnly && e.pointerType === "touch" && tool !== "selection")
+            api.current?.setActiveTool({ type: "hand" });
+          else if (penOnly && e.pointerType === "pen")
+            api.current?.setActiveTool({ type: tool, locked: true });
+        }}
+      >
+        <div
+          className="page-surface"
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+          }}
+          onDrop={(e) => {
+            if (e.dataTransfer.files[0]?.type.startsWith("image/")) {
+              e.preventDefault();
+              e.stopPropagation();
+              void insertImage(e.dataTransfer.files[0]);
+            }
+          }}
+        >
           {loaded && book && (
             <Excalidraw
               key={active + ":" + renderVersion}
@@ -1307,11 +1773,23 @@ function App() {
                   .catch(() => setNotice("Could not save shape library"));
               }}
               onChange={(elements, state, files) => {
+                if (
+                  book.scene.activePage !==
+                  all.current.find((b) => b.id === active)?.scene.activePage
+                )
+                  return;
                 updateScene(elements, state, files);
                 if (
-                  ["freedraw", "text", "selection", "eraser"].includes(
-                    state.activeTool.type,
-                  )
+                  [
+                    "freedraw",
+                    "text",
+                    "selection",
+                    "eraser",
+                    "arrow",
+                    "line",
+                    "rectangle",
+                    "ellipse",
+                  ].includes(state.activeTool.type)
                 )
                   setTool((previous) =>
                     previous === state.activeTool.type
@@ -1336,6 +1814,8 @@ function App() {
               ["freedraw", "✎", "Draw"],
               ["selection", "↖", "Select"],
               ["eraser", "⌫", "Erase"],
+              ["arrow", "", "Arrow"],
+              ["rectangle", "", "Shape"],
             ].map(([type, , label]) => (
               <button
                 key={type}
@@ -1348,6 +1828,45 @@ function App() {
                 <small>{label}</small>
               </button>
             ))}
+            {window.webkit?.messageHandlers?.whisketch && (
+              <button
+                aria-label="Recognize selected text or handwriting"
+                title="Recognize selected text or handwriting"
+                onClick={() => void exportImage(false, true)}
+              >
+                <Icon name="scan" />
+                <small>Read ink</small>
+              </button>
+            )}
+            <label className="image-tool" title="Insert a photo or image">
+              <Icon name="image" />
+              <small>Photo</small>
+              <input
+                aria-label="Insert photo or image"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void insertImage(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <label className="image-tool" title="Take a photo">
+              <Icon name="scan" />
+              <small>Camera</small>
+              <input
+                aria-label="Take a photo"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void insertImage(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <label className="ink-picker" title="Ink color">
               <input
                 aria-label="Ink color"

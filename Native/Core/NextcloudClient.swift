@@ -147,7 +147,7 @@ final class NextcloudClient {
       u.user == nil, u.password == nil, u.query == nil, u.fragment == nil,
       u.deletingLastPathComponent().standardized.path.trimmingCharacters(
         in: CharacterSet(charactersIn: "/")) == prefix,
-      ["whiteboard", "excalidraw"].contains(u.pathExtension.lowercased())
+      ["whisketch", "whiteboard", "excalidraw"].contains(u.pathExtension.lowercased())
     else { throw CloudError.unsafePath }
   }
   func boards() async throws -> [CloudBoard] {
@@ -168,7 +168,7 @@ final class NextcloudClient {
       guard let u = URL(string: href, relativeTo: base)?.absoluteURL else {
         throw CloudError.unsafePath
       }
-      guard ["whiteboard", "excalidraw"].contains(u.pathExtension.lowercased()) else { return nil }
+      guard ["whisketch", "whiteboard", "excalidraw"].contains(u.pathExtension.lowercased()) else { return nil }
       try validateFile(u)
       return CloudBoard(
         id: u.absoluteString, name: name.isEmpty ? u.lastPathComponent : name, url: u)
@@ -179,7 +179,7 @@ final class NextcloudClient {
     let (d, r) = try await request(b.url, method: "GET")
     guard r.statusCode == 200 else { throw CloudError.http(r.statusCode) }
     guard d.count < 40_000_000, let s = String(data: d, encoding: .utf8),
-      let o = try JSONSerialization.jsonObject(with: d) as? [String: Any], o["elements"] is [Any]
+      let o = try JSONSerialization.jsonObject(with: d) as? [String: Any], validNotebook(o)
     else { throw CloudError.invalidResponse }
     return s
   }
@@ -189,7 +189,7 @@ final class NextcloudClient {
     ).joined(separator: "-").trimmingCharacters(in: .whitespacesAndNewlines)
     if safe.isEmpty { safe = "Untitled" }
     safe = String(safe.prefix(100))
-    return try account.folder().appendingPathComponent(safe + ".whiteboard")
+    return try account.folder().appendingPathComponent(safe + ".whisketch")
   }
   private func revision(_ r: HTTPURLResponse) throws -> String {
     guard let tag = r.value(forHTTPHeaderField: "ETag"), tag.hasPrefix("\""),
@@ -199,10 +199,23 @@ final class NextcloudClient {
     }
     return tag
   }
+  private func validNotebook(_ object: [String: Any]) -> Bool {
+    if object["elements"] is [Any] { return true } // one-time legacy import
+    guard object["type"] as? String == "whisketch-notebook", object["version"] as? Int == 1,
+      let pages = object["pages"] as? [[String: Any]], !pages.isEmpty, pages.count <= 500
+    else { return false }
+    var ids = Set<String>()
+    return pages.allSatisfy { page in
+      guard let id = page["id"] as? String, ids.insert(id).inserted,
+        page["title"] is String, let content = page["content"] as? [String: Any],
+        content["objects"] is [Any] else { return false }
+      return true
+    }
+  }
   private func boardData(_ data: Data) throws -> String {
     guard data.count < 40_000_000, let json = String(data: data, encoding: .utf8),
       let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-      object["elements"] is [Any]
+      validNotebook(object)
     else { throw CloudError.invalidResponse }
     return json
   }

@@ -42,6 +42,29 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
           recognition = RecognizedText(text: result)
         } catch { self.error = error.localizedDescription }
       }
+    case "exportNotebookPDF":
+      guard let name = obj["name"] as? String, let pages = obj["pages"] as? [String],
+        !pages.isEmpty, pages.count <= 500 else { return }
+      do {
+        let bounds = CGRect(x: 0, y: 0, width: 595, height: 842)
+        let images = try pages.map { value -> UIImage in
+          guard let comma = value.firstIndex(of: ","),
+            let data = Data(base64Encoded: String(value[value.index(after: comma)...])),
+            let image = UIImage(data: data) else { throw CloudError.invalidResponse }
+          return image
+        }
+        let output = UIGraphicsPDFRenderer(bounds: bounds).pdfData { context in
+          for image in images {
+            context.beginPage()
+            let scale = min(555 / image.size.width, 802 / image.size.height)
+            let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            image.draw(in: CGRect(x:(595-size.width)/2,y:(842-size.height)/2,width:size.width,height:size.height))
+          }
+        }
+        let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: "\\", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(String(safe.prefix(100))+".pdf")
+        try output.write(to: url, options: .atomic); exportURL = url
+      } catch { self.error = error.localizedDescription }
     case "exportImage", "exportPDF":
       guard let name = obj["name"] as? String, let text = obj["data"] as? String,
         let comma = text.firstIndex(of: ","),
@@ -74,7 +97,7 @@ final class Bridge: NSObject, ObservableObject, WKScriptMessageHandler, WKNaviga
         let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(
           of: "\\", with: "-")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(
-          String(safe.prefix(100)) + (type == "exportBackup" ? ".json" : ".excalidraw"))
+          String(safe.prefix(100)) + (type == "exportBackup" ? ".json" : ".whisketch"))
         try Data(json.utf8).write(to: url, options: .atomic)
         exportURL = url
       } catch { self.error = error.localizedDescription }
@@ -260,7 +283,7 @@ struct CloudSheet: View {
   @State var folder = UserDefaults.standard.string(forKey: "cloudFolder") ?? "Whisketch"
   @State var boards: [CloudBoard] = []
   @State var status =
-    "Connect with a Nextcloud app password, then select where your whiteboard files live."
+    "Connect with a Nextcloud app password, then select where your Whisketch notebooks live."
   @State var busy = false
   @State var autoSync =
     UserDefaults.standard.object(forKey: "cloudAutoSync") as? Bool
@@ -293,7 +316,7 @@ struct CloudSheet: View {
           TextField("Folder in Files", text: $folder).textInputAutocapitalization(.never)
             .autocorrectionDisabled()
           Text(
-            "Files → \(folder.isEmpty ? "All files" : folder). Whiteboard files can live in any folder. Connected notes sync when opened and after edits."
+            "Files → \(folder.isEmpty ? "All files" : folder). Notebook files can live in any folder. Connected notes sync when opened and after edits."
           ).font(.footnote)
           Button("Connect and enable automatic sync") {
             let connectingPassword = password
@@ -309,7 +332,7 @@ struct CloudSheet: View {
               status =
                 boards.isEmpty
                 ? "Automatic sync enabled. Open a notebook to save it here."
-                : "Automatic sync enabled. Select a board to open and keep synced."
+                : "Automatic sync enabled. Select a notebook to open and keep synced."
             }
           }.disabled(busy || user.isEmpty || password.isEmpty)
         }.disabled(busy)

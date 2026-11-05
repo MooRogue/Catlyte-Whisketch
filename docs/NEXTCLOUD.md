@@ -1,3 +1,7 @@
+# Nextcloud storage in Whisketch 0.5
+
+Whisketch now saves `.whisketch` notebooks, not Nextcloud Whiteboard documents. The selected Files folder still applies. Old remote board files are preserved during migration. See [0.5 migration, browser setup requirements and limitations](RELEASE-0.5.md). The earlier implementation notes below describe the original board-sync prototype; `.whiteboard` references are historical.
+
 # Nextcloud files and automatic sync
 
 Whiteboard opens `.whiteboard` documents in Nextcloud Files. There is no mandatory global Whiteboard directory. Whisketch defaults to **Files → Whisketch**, configurable under **Nextcloud connection**. `Notes/Whiteboards` selects a nested folder; an empty path selects your Files root, not a server filesystem path.

@@ -1,3 +1,4 @@
+import { parseBoard } from "../../Web/src/document.mjs";
 import { test, expect } from "@playwright/test";
 
 async function exported(page: any) {
@@ -6,10 +7,10 @@ async function exported(page: any) {
     .click();
   const pending = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "Export editable board", exact: true })
+    .getByRole("button", { name: "Export notebook file", exact: true })
     .click();
   const fs = await import("node:fs/promises");
-  return JSON.parse(await fs.readFile((await (await pending).path())!, "utf8"));
+  return parseBoard(await fs.readFile((await (await pending).path())!, "utf8"));
 }
 test("notebook palette draws, undoes and redoes without the diagram toolbar", async ({
   page,

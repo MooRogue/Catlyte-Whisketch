@@ -1141,3 +1141,222 @@ main {
   color: #9ae0d9;
   background: #36534f;
 }
+/* One workspace: notebook pages and whiteboard presentation share all objects. */
+.page-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  min-height: 48px;
+}
+.page-bar button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 12px;
+}
+.page-bar button[aria-pressed="true"] {
+  background: var(--accent);
+}
+.page-bar input {
+  min-width: 65px;
+  width: 170px;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+.page-list {
+  position: absolute;
+  z-index: 25;
+  top: 108px;
+  left: 12px;
+  width: min(340px, calc(100% - 24px));
+  max-height: 65%;
+  overflow: auto;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px #0003;
+}
+.page-list > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 5px 0;
+  text-align: left;
+  border: 0;
+}
+.page-list > button[aria-current="page"] {
+  background: var(--accent);
+}
+.page-list small {
+  margin-left: auto;
+  opacity: 0.6;
+}
+.mini-page {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 4px 9px 9px 4px;
+  background: #fffdf7;
+  color: #324945;
+}
+.streamlined .view-notebook .page-surface {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 10px;
+  box-shadow: 0 3px 20px #0001;
+}
+.streamlined .view-whiteboard .page-surface {
+  max-width: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.writing-tools {
+  width: max-content;
+  overflow-x: auto;
+  justify-content: flex-start;
+  scrollbar-width: thin;
+}
+.writing-tools > * {
+  flex-shrink: 0;
+}
+.image-tool {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+}
+.image-tool:hover {
+  background: var(--accent);
+}
+.image-tool small {
+  font-size: 9px;
+}
+.image-tool input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  padding: 0;
+}
+.image-tool:focus-within {
+  outline: 3px solid #329ca9;
+  outline-offset: -2px;
+}
+@media (max-width: 600px) {
+  .page-bar {
+    padding: 4px 8px;
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+  .page-bar button {
+    padding: 6px;
+    font-size: 11px;
+  }
+  .page-bar input {
+    width: 80px;
+  }
+  .page-bar button:last-child {
+    margin-left: auto;
+  }
+  .page-list {
+    top: 145px;
+  }
+  .writing-tools {
+    bottom: 26px;
+  }
+}
+@media print {
+  header,
+  .page-bar,
+  .writing-tools,
+  .page-list,
+  footer,
+  .shelf {
+    display: none !important;
+  }
+  html,
+  body,
+  #root,
+  .shell,
+  main {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+.connection-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0007;
+  padding: 18px;
+}
+.connection-overlay section {
+  position: relative;
+  max-height: 95%;
+  overflow: auto;
+  max-width: 480px;
+  width: 100%;
+  padding: 28px;
+  border-radius: 24px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 15px 60px #0003;
+}
+.connection-overlay label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.connection-overlay p {
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+.close-connection {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: 0;
+}
+@media (max-width: 600px) {
+  .writing-tools {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(40px, 1fr));
+    width: calc(100% - 24px);
+    max-width: 420px;
+    gap: 2px;
+    overflow: visible;
+  }
+  .writing-tools button,
+  .image-tool,
+  .ink-picker {
+    width: 100%;
+    min-width: 0;
+  }
+}

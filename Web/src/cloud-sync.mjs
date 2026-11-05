@@ -1,3 +1,4 @@
+import { notebookFile } from "./notebook.mjs";
 import { parseBoard } from "./document.mjs";
 
 function canonical(value) {
@@ -12,7 +13,9 @@ function canonical(value) {
   return value;
 }
 export function contentKey(scene) {
-  const { source, ...board } = parseBoard(scene);
+  const parsed = parseBoard(scene);
+  if (parsed.pages) return JSON.stringify(canonical(notebookFile(parsed)));
+  const { source, ...board } = parsed;
   const { zoom, scrollX, scrollY, ...appState } = board.appState;
   return JSON.stringify(canonical({ ...board, appState }));
 }
@@ -226,7 +229,7 @@ export class CloudSync {
         patch.scene = parseBoard(remote.json);
         patch.title = decodeURIComponent(
           new URL(url).pathname.split("/").pop(),
-        ).replace(/\.(whiteboard|excalidraw)$/i, "");
+        ).replace(/\.(whisketch|whiteboard|excalidraw)$/i, "");
       }
       await this.commit(id, patch, choice === "remote");
     }
